@@ -32,6 +32,10 @@ interface CanvasState {
     sidebarRightOpen: boolean;
     activeSidebarTab: 'pages' | 'layers';
     activeRightTab: 'properties' | 'layers';
+    history: {
+        past: { pages: PageConfig[], annotations: Annotation[] }[];
+        future: { pages: PageConfig[], annotations: Annotation[] }[];
+    };
 }
 
 const initialState: CanvasState = {
@@ -47,6 +51,18 @@ const initialState: CanvasState = {
     sidebarRightOpen: true,
     activeSidebarTab: 'pages',
     activeRightTab: 'properties',
+    history: {
+        past: [],
+        future: []
+    }
+};
+
+const saveHistory = (state: CanvasState) => {
+    state.history.past.push({
+        pages: JSON.parse(JSON.stringify(state.pages)),
+        annotations: JSON.parse(JSON.stringify(state.annotations))
+    });
+    state.history.future = [];
 };
 
 export const canvasSlice = createSlice({
@@ -55,13 +71,13 @@ export const canvasSlice = createSlice({
     reducers: {
         setPdfUrl: (state, action: PayloadAction<string | null>) => {
             state.pdfUrl = action.payload;
+            state.history = { past: [], future: [] }; // Reset history on new file
         },
         setPage: (state, action: PayloadAction<number>) => {
             state.currentPage = action.payload;
         },
         setTotalPages: (state, action: PayloadAction<number>) => {
             state.totalPages = action.payload;
-            // Initialize virtual pages if empty or count changed (simple reset for now)
             if (state.pages.length === 0 || state.pages.length !== action.payload) {
                 state.pages = Array.from({ length: action.payload }, (_, i) => ({
                     id: `page-${i + 1}`,
@@ -78,21 +94,16 @@ export const canvasSlice = createSlice({
             }));
         },
         rotatePage: (state, action: PayloadAction<{ id: string, rotation: number }>) => {
+            saveHistory(state);
             const page = state.pages.find(p => p.id === action.payload.id);
             if (page) {
                 page.rotation = action.payload.rotation;
             }
         },
         deletePage: (state, action: PayloadAction<string>) => {
+            saveHistory(state);
             state.pages = state.pages.filter(p => p.id !== action.payload);
-
-            // Adjust current page if needed
             if (state.pages.length > 0) {
-                // Determine new index (clamp to valid range)
-                const currentIdx = state.pages.findIndex(p => p.id === action.payload);
-                // If we deleted the current viewing page, move to the nearest one
-                // But wait, we don't know which one user was viewing by ID easily unless we track it differently.
-                // For now, ensure currentPage index is within bounds of state.pages.length
                 if (state.currentPage > state.pages.length) {
                     state.currentPage = state.pages.length;
                 }
@@ -102,20 +113,20 @@ export const canvasSlice = createSlice({
             state.totalPages = state.pages.length;
         },
         reorderPages: (state, action: PayloadAction<{ activeId: string, overId: string }>) => {
+            // Check if actual change
             const oldIndex = state.pages.findIndex(p => p.id === action.payload.activeId);
             const newIndex = state.pages.findIndex(p => p.id === action.payload.overId);
-
-            if (oldIndex !== -1 && newIndex !== -1) {
+            if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+                saveHistory(state);
                 const [movedPage] = state.pages.splice(oldIndex, 1);
                 state.pages.splice(newIndex, 0, movedPage);
             }
         },
         movePage: (state, action: PayloadAction<{ id: string, direction: 'up' | 'down' }>) => {
+            saveHistory(state);
             const index = state.pages.findIndex(p => p.id === action.payload.id);
             if (index === -1) return;
-
             const newIndex = action.payload.direction === 'up' ? index - 1 : index + 1;
-
             if (newIndex >= 0 && newIndex < state.pages.length) {
                 const [movedPage] = state.pages.splice(index, 1);
                 state.pages.splice(newIndex, 0, movedPage);
@@ -126,27 +137,65 @@ export const canvasSlice = createSlice({
         },
         setTool: (state, action: PayloadAction<CanvasState['tool']>) => {
             state.tool = action.payload;
-            state.selectedAnnotationId = null; // Deselect when changing tools
+            state.selectedAnnotationId = null;
         },
         addAnnotation: (state, action: PayloadAction<Annotation>) => {
+            saveHistory(state);
             state.annotations.push(action.payload);
         },
         updateAnnotation: (state, action: PayloadAction<Annotation>) => {
+            saveHistory(state);
             const index = state.annotations.findIndex(a => a.id === action.payload.id);
             if (index !== -1) {
                 state.annotations[index] = action.payload;
             }
         },
         removeAnnotation: (state, action: PayloadAction<string>) => {
+            saveHistory(state);
             state.annotations = state.annotations.filter(a => a.id !== action.payload);
         },
         setSelectedAnnotationId: (state, action: PayloadAction<string | null>) => {
             state.selectedAnnotationId = action.payload;
         },
         updateAnnotationProperties: (state, action: PayloadAction<{ id: string; updates: Partial<Annotation> }>) => {
+            saveHistory(state);
             const index = state.annotations.findIndex(a => a.id === action.payload.id);
             if (index !== -1) {
                 state.annotations[index] = { ...state.annotations[index], ...action.payload.updates };
+            }
+        },
+        undo: (state) => {
+            if (state.history.past.length > 0) {
+                const previous = state.history.past.pop();
+                if (previous) {
+                    state.history.future.push({
+                        pages: JSON.parse(JSON.stringify(state.pages)),
+                        annotations: JSON.parse(JSON.stringify(state.annotations))
+                    });
+                    state.pages = previous.pages;
+                    state.annotations = previous.annotations;
+
+                    // Recalculate derived state if needed
+                    state.totalPages = state.pages.length;
+                    // Reset selection to avoid ghost selection
+                    state.selectedAnnotationId = null;
+                }
+            }
+        },
+        redo: (state) => {
+            if (state.history.future.length > 0) {
+                const next = state.history.future.pop();
+                if (next) {
+                    state.history.past.push({
+                        pages: JSON.parse(JSON.stringify(state.pages)),
+                        annotations: JSON.parse(JSON.stringify(state.annotations))
+                    });
+                    state.pages = next.pages;
+                    state.annotations = next.annotations;
+
+                    state.totalPages = state.pages.length;
+                    state.selectedAnnotationId = null;
+                }
             }
         },
         setSidebarLeftOpen: (state, action: PayloadAction<boolean>) => {
@@ -169,7 +218,7 @@ export const {
     initPages, rotatePage, deletePage, reorderPages, movePage,
     addAnnotation, updateAnnotation, removeAnnotation, setSelectedAnnotationId,
     setSidebarLeftOpen, setSidebarRightOpen, setActiveSidebarTab, setActiveRightTab,
-    updateAnnotationProperties
+    updateAnnotationProperties, undo, redo
 } = canvasSlice.actions;
 
 export default canvasSlice.reducer;

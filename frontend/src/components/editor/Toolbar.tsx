@@ -1,7 +1,8 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
-import { setScale, setTool, setSidebarLeftOpen, setSidebarRightOpen } from '../../store/slices/canvasSlice';
+import { setScale, setTool, setSidebarLeftOpen, setSidebarRightOpen, undo, redo } from '../../store/slices/canvasSlice';
+import { generatePDF } from '../../utils/pdfGenerator';
 import {
     ZoomIn,
     ZoomOut,
@@ -39,10 +40,35 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
         currentPage,
         totalPages,
         sidebarLeftOpen,
-        sidebarRightOpen
+        sidebarRightOpen,
+        history,
+        pdfUrl,
+        pages,
+        annotations
     } = useSelector((state: RootState) => state.canvas);
 
     const activeTool = tool;
+    const canUndo = history.past.length > 0;
+    const canRedo = history.future.length > 0;
+
+    const handleDownload = async () => {
+        if (!pdfUrl) return;
+        try {
+            const pdfBytes = await generatePDF(pdfUrl, pages, annotations);
+            const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'edited_document.pdf';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Failed to download PDF:', error);
+            alert('Failed to generate PDF. check console for details.');
+        }
+    };
 
     return (
         <div className="flex flex-col z-50 shadow-xl">
@@ -130,10 +156,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                 {/* Right Actions */}
                 <div className="flex items-center gap-3">
                     <div className="flex bg-slate-800/50 rounded-lg p-1 border border-white/5">
-                        <button className="p-1.5 hover:bg-white/10 rounded-md transition-colors text-slate-400 hover:text-white">
+                        <button
+                            onClick={() => dispatch(undo())}
+                            disabled={!canUndo}
+                            className={`p-1.5 rounded-md transition-colors ${canUndo ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-600 cursor-not-allowed'}`}
+                            title="Undo (Ctrl+Z)"
+                        >
                             <Undo className="w-4 h-4" />
                         </button>
-                        <button className="p-1.5 hover:bg-white/10 rounded-md transition-colors text-slate-400 hover:text-white">
+                        <button
+                            onClick={() => dispatch(redo())}
+                            disabled={!canRedo}
+                            className={`p-1.5 rounded-md transition-colors ${canRedo ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-600 cursor-not-allowed'}`}
+                            title="Redo (Ctrl+Y)"
+                        >
                             <Redo className="w-4 h-4" />
                         </button>
                     </div>
@@ -146,7 +182,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                         <span>Open</span>
                     </button>
 
-                    <button className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-lg shadow-indigo-500/20 transition-all text-sm font-medium whitespace-nowrap">
+                    <button
+                        onClick={handleDownload}
+                        className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-lg shadow-indigo-500/20 transition-all text-sm font-medium whitespace-nowrap active:scale-95"
+                    >
                         <Download className="w-4 h-4" />
                         <span>Download</span>
                     </button>
