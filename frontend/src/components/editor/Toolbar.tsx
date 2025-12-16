@@ -25,7 +25,8 @@ import {
     Eraser,
     AppWindow, // For "Extract Content" placeholder or similar
     Settings,
-    FileSignature
+    FileSignature,
+    X
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -47,6 +48,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
         annotations
     } = useSelector((state: RootState) => state.canvas);
 
+    const [showDownloadDialog, setShowDownloadDialog] = React.useState(false);
+    const [fileName, setFileName] = React.useState('edited_document');
+
     const activeTool = tool;
     const canUndo = history.past.length > 0;
     const canRedo = history.future.length > 0;
@@ -59,11 +63,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = 'edited_document.pdf';
+            link.download = `${fileName.endsWith('.pdf') ? fileName : fileName + '.pdf'}`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
+            setShowDownloadDialog(false);
         } catch (error) {
             console.error('Failed to download PDF:', error);
             alert('Failed to generate PDF. check console for details.');
@@ -71,7 +76,41 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
     };
 
     return (
-        <div className="flex flex-col z-50 shadow-xl">
+        <div className="flex flex-col z-50 shadow-xl relative">
+            {showDownloadDialog && (
+                <div className="absolute top-16 right-4 bg-[var(--surface)] border border-white/10 p-4 rounded-xl shadow-2xl w-80 animate-in fade-in zoom-in-95 duration-200 z-[60]">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-white">Download PDF</h3>
+                        <button
+                            onClick={() => setShowDownloadDialog(false)}
+                            className="text-slate-400 hover:text-white transition-colors"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                    <div className="space-y-3">
+                        <div>
+                            <label className="text-xs text-slate-400 mb-1.5 block">File Name</label>
+                            <input
+                                type="text"
+                                value={fileName}
+                                onChange={(e) => setFileName(e.target.value)}
+                                className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                                placeholder="Enter file name"
+                                autoFocus
+                            />
+                        </div>
+                        <button
+                            onClick={handleDownload}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-all active:scale-95"
+                        >
+                            <Download className="w-4 h-4" />
+                            Download
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Top Main Toolbar */}
             <div className="h-14 bg-sidebar border-b border-white/10 flex items-center justify-between px-4 overflow-x-auto no-scrollbar gap-4">
                 {/* Logo / Home */}
@@ -183,8 +222,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                     </button>
 
                     <button
-                        onClick={handleDownload}
-                        className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-lg shadow-indigo-500/20 transition-all text-sm font-medium whitespace-nowrap active:scale-95"
+                        onClick={() => setShowDownloadDialog(true)}
+                        disabled={!pdfUrl}
+                        className={`flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-lg shadow-indigo-500/20 transition-all text-sm font-medium whitespace-nowrap active:scale-95 ${!pdfUrl ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         <Download className="w-4 h-4" />
                         <span>Download</span>
