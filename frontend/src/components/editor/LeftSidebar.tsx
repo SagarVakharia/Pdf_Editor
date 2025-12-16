@@ -7,7 +7,8 @@ import {
     deletePage,
     reorderPages,
     movePage,
-    setPage
+    setPage,
+    navigateToPage
 } from '../../store/slices/canvasSlice';
 import { Layers, Grid } from 'lucide-react';
 import {
@@ -116,7 +117,7 @@ export const LeftSidebar: React.FC = () => {
                                                     page={page}
                                                     index={i}
                                                     isActive={currentPage === i + 1}
-                                                    onClick={() => dispatch(setPage(i + 1))}
+                                                    onClick={() => dispatch(navigateToPage(i + 1))}
                                                     onRotate={(id, rot) => dispatch(rotatePage({ id, rotation: rot }))}
                                                     onDelete={(id) => dispatch(deletePage(id))}
                                                     onMove={(id, dir) => dispatch(movePage({ id, direction: dir }))}

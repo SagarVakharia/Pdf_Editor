@@ -32,6 +32,7 @@ interface CanvasState {
     sidebarRightOpen: boolean;
     activeSidebarTab: 'pages' | 'layers';
     activeRightTab: 'properties' | 'layers';
+    navigationRequest: number | null; // For explicit navigation events
     history: {
         past: { pages: PageConfig[], annotations: Annotation[] }[];
         future: { pages: PageConfig[], annotations: Annotation[] }[];
@@ -51,6 +52,7 @@ const initialState: CanvasState = {
     sidebarRightOpen: true,
     activeSidebarTab: 'pages',
     activeRightTab: 'properties',
+    navigationRequest: null,
     history: {
         past: [],
         future: []
@@ -75,6 +77,10 @@ export const canvasSlice = createSlice({
         },
         setPage: (state, action: PayloadAction<number>) => {
             state.currentPage = action.payload;
+        },
+        navigateToPage: (state, action: PayloadAction<number>) => {
+            state.currentPage = action.payload;
+            state.navigationRequest = action.payload; // Signal viewer to scroll
         },
         setTotalPages: (state, action: PayloadAction<number>) => {
             state.totalPages = action.payload;
@@ -218,7 +224,7 @@ export const {
     initPages, rotatePage, deletePage, reorderPages, movePage,
     addAnnotation, updateAnnotation, removeAnnotation, setSelectedAnnotationId,
     setSidebarLeftOpen, setSidebarRightOpen, setActiveSidebarTab, setActiveRightTab,
-    updateAnnotationProperties, undo, redo
+    updateAnnotationProperties, undo, redo, navigateToPage
 } = canvasSlice.actions;
 
 export default canvasSlice.reducer;

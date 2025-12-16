@@ -27,7 +27,7 @@ interface PDFViewerProps {
 export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale }) => {
     const dispatch = useDispatch();
     const [numPages, setNumPages] = useState<number>(0);
-    const { pages } = useSelector((state: RootState) => state.canvas);
+    const { pages, navigationRequest } = useSelector((state: RootState) => state.canvas);
 
     function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
         setNumPages(numPages);
@@ -59,6 +59,16 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale }) => {
 
         return () => observer.disconnect();
     }, [pages, dispatch]); // Re-run when pages change (reordering/add/delete)
+
+    // Explicit navigation handler
+    React.useEffect(() => {
+        if (navigationRequest) {
+            const pageElement = document.getElementById(`page-${navigationRequest}`);
+            if (pageElement) {
+                pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    }, [navigationRequest]);
 
     if (!file) {
         return (
