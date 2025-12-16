@@ -11,12 +11,21 @@ interface Annotation {
     color?: string;
     size?: number;
     opacity?: number;
+    isExtracted?: boolean;
+    fontFamily?: string;
+    textAlign?: 'left' | 'center' | 'right';
+    isBold?: boolean;
+    isItalic?: boolean;
+    backgroundColor?: string;
+    minWidth?: number;
+    minHeight?: number;
 }
 
 interface PageConfig {
     id: string;
     originalIndex: number; // 1-based index from the original PDF
     rotation: number;     // 0, 90, 180, 270
+    isExtracted?: boolean;
 }
 
 interface CanvasState {
@@ -38,7 +47,6 @@ interface CanvasState {
         future: { pages: PageConfig[], annotations: Annotation[] }[];
     };
 }
-
 const initialState: CanvasState = {
     pdfUrl: null,
     currentPage: 1,
@@ -88,7 +96,8 @@ export const canvasSlice = createSlice({
                 state.pages = Array.from({ length: action.payload }, (_, i) => ({
                     id: `page-${i + 1}`,
                     originalIndex: i + 1,
-                    rotation: 0
+                    rotation: 0,
+                    isExtracted: false
                 }));
             }
         },
@@ -96,7 +105,8 @@ export const canvasSlice = createSlice({
             state.pages = Array.from({ length: action.payload }, (_, i) => ({
                 id: `page-${i + 1}`,
                 originalIndex: i + 1,
-                rotation: 0
+                rotation: 0,
+                isExtracted: false
             }));
         },
         rotatePage: (state, action: PayloadAction<{ id: string, rotation: number }>) => {
@@ -104,6 +114,13 @@ export const canvasSlice = createSlice({
             const page = state.pages.find(p => p.id === action.payload.id);
             if (page) {
                 page.rotation = action.payload.rotation;
+            }
+        },
+        togglePageExtraction: (state, action: PayloadAction<string>) => {
+            saveHistory(state);
+            const page = state.pages.find(p => p.id === action.payload);
+            if (page) {
+                page.isExtracted = !page.isExtracted;
             }
         },
         deletePage: (state, action: PayloadAction<string>) => {
@@ -148,6 +165,10 @@ export const canvasSlice = createSlice({
         addAnnotation: (state, action: PayloadAction<Annotation>) => {
             saveHistory(state);
             state.annotations.push(action.payload);
+        },
+        setAnnotations: (state, action: PayloadAction<Annotation[]>) => {
+            saveHistory(state);
+            state.annotations = [...state.annotations, ...action.payload];
         },
         updateAnnotation: (state, action: PayloadAction<Annotation>) => {
             saveHistory(state);
@@ -224,7 +245,7 @@ export const {
     initPages, rotatePage, deletePage, reorderPages, movePage,
     addAnnotation, updateAnnotation, removeAnnotation, setSelectedAnnotationId,
     setSidebarLeftOpen, setSidebarRightOpen, setActiveSidebarTab, setActiveRightTab,
-    updateAnnotationProperties, undo, redo, navigateToPage
+    updateAnnotationProperties, undo, redo, navigateToPage, togglePageExtraction, setAnnotations
 } = canvasSlice.actions;
 
 export default canvasSlice.reducer;

@@ -8,6 +8,7 @@ interface PageConfig {
     id: string;
     originalIndex: number;
     rotation: number;
+    isExtracted?: boolean;
 }
 
 interface SortablePageItemProps {
@@ -107,6 +108,11 @@ export const SortablePageItem: React.FC<SortablePageItemProps> = ({
 
             {/* Thumbnail */}
             <div className="aspect-[3/4] bg-white rounded flex items-center justify-center relative overflow-hidden">
+                {page.isExtracted && (
+                    <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm z-10 font-medium pointer-events-none">
+                        Extracted
+                    </div>
+                )}
                 <div className="absolute inset-0 bg-slate-100 flex items-center justify-center text-slate-300 text-[10px] select-none pointer-events-none">
                     {/* Render the actual PDF page thumbnail */}
                     <div style={{ transform: `rotate(${page.rotation}deg)`, width: '100%', height: '100%' }} className="transition-transform duration-300 flex items-center justify-center">

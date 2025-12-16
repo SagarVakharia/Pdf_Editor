@@ -12,8 +12,8 @@ import { TextLayer } from '@/components/editor/tools/TextLayer';
 import { DrawLayer } from '@/components/editor/tools/DrawLayer';
 import { HandLayer } from '@/components/editor/tools/HandLayer';
 import { ImageLayer } from '@/components/editor/tools/ImageLayer';
-
-// Configure PDF.js worker
+import { nanoid } from '@reduxjs/toolkit';
+import { addAnnotation, setSelectedAnnotationId } from '../../store/slices/canvasSlice';
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.min.mjs',
     import.meta.url,
@@ -27,7 +27,7 @@ interface PDFViewerProps {
 export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale }) => {
     const dispatch = useDispatch();
     const [numPages, setNumPages] = useState<number>(0);
-    const { pages, navigationRequest } = useSelector((state: RootState) => state.canvas);
+    const { pages, navigationRequest, tool: currentTool } = useSelector((state: RootState) => state.canvas);
 
     function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
         setNumPages(numPages);
@@ -69,6 +69,84 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale }) => {
             }
         }
     }, [navigationRequest]);
+
+    const handlePageClick = (e: React.MouseEvent, pageIndex: number) => {
+        // Only handle click if tool is 'text'
+        if (currentTool !== 'text') return;
+
+        // Check if user clicked on existing text (span in textLayer)
+        const target = e.target as HTMLElement;
+        const isTextSpan = target.tagName === 'SPAN' && target.closest('.react-pdf__Page__textContent');
+
+        const pageElement = e.currentTarget;
+        const rect = pageElement.getBoundingClientRect();
+
+        // Calculate clicked position relative to PDF page
+        const x = (e.clientX - rect.left) / scale;
+        const y = (e.clientY - rect.top) / scale;
+
+        let content = 'New Text';
+        let fontSize = 16;
+        let finalX = x;
+        let finalY = y;
+        let minW: number | undefined;
+        let minH: number | undefined;
+        let fontFamily = 'Arial';
+        let isBold = false;
+        let isItalic = false;
+
+        // IF clicked on existing text, extract its properties
+        if (isTextSpan) {
+            const spanRect = target.getBoundingClientRect();
+
+            // HIDE ORIGINAL ELEMENT IMMEDIATELY
+            target.style.opacity = '0';
+            target.style.pointerEvents = 'none'; // Prevent further interaction with hidden element
+
+            // Adjust coordinates to exactly match the existing text
+            finalX = (spanRect.left - rect.left) / scale;
+            finalY = (spanRect.top - rect.top) / scale;
+
+            // Extract styling
+            content = target.innerText;
+
+            // Capture dimensions for masking
+            minW = (spanRect.width / scale) + 5;
+            minH = (spanRect.height / scale);
+
+            // Get computed font properties
+            const computedStyle = window.getComputedStyle(target);
+            const computedFontSize = parseFloat(computedStyle.fontSize);
+            if (!isNaN(computedFontSize)) {
+                fontSize = computedFontSize / scale;
+            }
+
+            fontFamily = computedStyle.fontFamily || 'Arial';
+            const fontWeight = computedStyle.fontWeight;
+            isBold = fontWeight === 'bold' || parseInt(fontWeight) >= 700;
+            isItalic = computedStyle.fontStyle === 'italic';
+        }
+
+        const id = nanoid();
+        dispatch(addAnnotation({
+            id,
+            type: 'text',
+            x: finalX,
+            y: finalY,
+            page: pageIndex,
+            content: content,
+            color: '#000000',
+            backgroundColor: '#ffffff', // Opaque background
+            size: fontSize,
+            minWidth: minW,
+            minHeight: minH,
+            textAlign: 'left',
+            fontFamily: fontFamily.replace(/['"]/g, ''), // Clean quotes from font family
+            isBold,
+            isItalic
+        }));
+        dispatch(setSelectedAnnotationId(id));
+    };
 
     if (!file) {
         return (
@@ -120,13 +198,14 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale }) => {
                             className="relative transition-all duration-300 pdf-page-wrapper"
                             data-page-index={index + 1}
                             id={`page-${index + 1}`}
+                            onClick={(e) => handlePageClick(e, page.originalIndex)}
                         >
                             <div style={{ transform: `rotate(${page.rotation}deg)` }} className="transition-transform origin-center">
                                 <Page
                                     pageNumber={page.originalIndex}
                                     scale={scale}
                                     className="bg-white shadow-lg"
-                                    renderTextLayer={true}
+                                    renderTextLayer={!page.isExtracted}
                                     renderAnnotationLayer={true}
                                 />
                             </div>

@@ -1,5 +1,21 @@
 import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib';
 
+const sanitizeText = (text: string) => {
+    return text.replace(/[^\x00-\xFF]/g, (char) => {
+        switch (char.charCodeAt(0)) {
+            case 8216: return "'"; // ‘
+            case 8217: return "'"; // ’
+            case 8220: return '"'; // “
+            case 8221: return '"'; // ”
+            case 8211: return '-'; // –
+            case 8212: return '--'; // —
+            case 8226: return '-'; // •
+            case 9679: return '-'; // ●
+            default: return '?';
+        }
+    });
+};
+
 interface PageConfig {
     id: string;
     originalIndex: number;
@@ -17,6 +33,12 @@ interface Annotation {
     color?: string;
     size?: number;
     opacity?: number;
+    backgroundColor?: string;
+    minWidth?: number;
+    minHeight?: number;
+    isBold?: boolean;
+    isItalic?: boolean;
+    fontFamily?: string;
 }
 
 export const generatePDF = async (
@@ -24,39 +46,59 @@ export const generatePDF = async (
     pages: PageConfig[],
     annotations: Annotation[]
 ) => {
+    if (pages.length === 0) {
+        throw new Error("Cannot generate PDF with 0 pages.");
+    }
+
     try {
         // Fetch current PDF
-        const existingPdfBytes = await fetch(pdfUrl).then(res => res.arrayBuffer());
+        // Fetch current PDF
+        let existingPdfBytes;
+        try {
+            const res = await fetch(pdfUrl);
+            if (!res.ok) throw new Error(`Failed to fetch PDF: ${res.statusText}`);
+            existingPdfBytes = await res.arrayBuffer();
+        } catch (e) {
+            throw new Error(`Error fetching PDF from URL: ${e instanceof Error ? e.message : String(e)}`);
+        }
 
         // Load into pdf-lib
-        const pdfDoc = await PDFDocument.load(existingPdfBytes);
+        // Load into pdf-lib
+        let pdfDoc;
+        try {
+            pdfDoc = await PDFDocument.load(existingPdfBytes);
+        } catch (e) {
+            throw new Error(`Error loading PDF document: ${e instanceof Error ? e.message : String(e)}`);
+        }
 
         // Create a new document to assemble pages
         const newPdfDoc = await PDFDocument.create();
 
         // 1. Process Pages (Reordering & Rotation)
         // We need to copy pages from original doc to new doc in the specific order
-        const copiedPages = await newPdfDoc.copyPages(
-            pdfDoc,
-            pages.map(p => p.originalIndex - 1) // 0-based index
-        );
+        try {
+            const pageIndices = pages.map(p => p.originalIndex - 1);
+            // newPdfDoc.copyPages expects an array of indices. Ensure they are valid.
+            const totalOriginal = pdfDoc.getPageCount();
+            if (pageIndices.some(i => i < 0 || i >= totalOriginal)) {
+                throw new Error(`Invalid page index found. Document has ${totalOriginal} pages.`);
+            }
 
-        // Add pages to new doc and apply rotation relative to existing rotation if needed
-        // But simply setting rotation is usually absolute in pdf-lib
-        pages.forEach((pageConfig, index) => {
-            const page = copiedPages[index];
-            const existingRotation = page.getRotation().angle;
-            // The rotation in our state (0, 90, 180, 270) acts as an offset or absolute? 
-            // Usually in UI we treat it as absolute rotation relative to view.
-            // Let's assume it overrides or adds. 
-            // If the UI rotates 90deg, it means 90deg from original.
-            // So we set it to (original + config) or just config?
-            // Let's assume absolute rotation from "upright".
-            // But if original PDF has rotation, we might need to respect it. 
-            // For simplicity, let's ADD the rotation.
-            page.setRotation(degrees((existingRotation + pageConfig.rotation) % 360));
-            newPdfDoc.addPage(page);
-        });
+            const copiedPages = await newPdfDoc.copyPages(
+                pdfDoc,
+                pageIndices
+            );
+
+            // Add pages to new doc
+            pages.forEach((pageConfig, index) => {
+                const page = copiedPages[index];
+                const existingRotation = page.getRotation().angle;
+                page.setRotation(degrees((existingRotation + pageConfig.rotation) % 360));
+                newPdfDoc.addPage(page);
+            });
+        } catch (e) {
+            throw new Error(`Error copying pages: ${e instanceof Error ? e.message : String(e)}`);
+        }
 
         // 2. Apply Annotations
         // We need to map annotations to the NEW pages in newPdfDoc.
@@ -96,13 +138,41 @@ export const generatePDF = async (
 
                 if (annotation.type === 'text' && annotation.content) {
                     const fontSize = annotation.size || 16;
-                    // Y flip: height - y
-                    // Also text baseline adjustment might be needed
-                    page.drawText(annotation.content, {
+
+                    // Select Font
+                    let font = helveticaFont;
+                    if (annotation.isBold && annotation.isItalic) font = await newPdfDoc.embedFont(StandardFonts.HelveticaBoldOblique);
+                    else if (annotation.isBold) font = await newPdfDoc.embedFont(StandardFonts.HelveticaBold);
+                    else if (annotation.isItalic) font = await newPdfDoc.embedFont(StandardFonts.HelveticaOblique);
+
+                    // Calculate Dimensions
+                    const textWidth = font.widthOfTextAtSize(sanitizeText(annotation.content), fontSize);
+                    const boxWidth = Math.max(textWidth, annotation.minWidth || 0);
+                    const boxHeight = Math.max(fontSize, annotation.minHeight || 0);
+
+                    // Draw Background (Masking)
+                    if (annotation.backgroundColor) {
+                        const bgColorHex = annotation.backgroundColor;
+                        const bgR = parseInt(bgColorHex.slice(1, 3), 16) / 255;
+                        const bgG = parseInt(bgColorHex.slice(3, 5), 16) / 255;
+                        const bgB = parseInt(bgColorHex.slice(5, 7), 16) / 255;
+
+                        page.drawRectangle({
+                            x: annotation.x,
+                            y: height - annotation.y - boxHeight,
+                            width: boxWidth,
+                            height: boxHeight,
+                            color: rgb(bgR, bgG, bgB),
+                            opacity: 1 // Background should be opaque to hide original text
+                        });
+                    }
+
+                    // Draw Text
+                    page.drawText(sanitizeText(annotation.content), {
                         x: annotation.x,
-                        y: height - annotation.y - fontSize, // Approximate baseline
+                        y: height - annotation.y - fontSize + (fontSize * 0.15), // Slight vertical adjustment to center in box approx
                         size: fontSize,
-                        font: helveticaFont,
+                        font: font,
                         color: pdfColor,
                         opacity: opacity
                     });

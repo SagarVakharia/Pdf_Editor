@@ -1,8 +1,10 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
-import { setScale, setTool, setSidebarLeftOpen, setSidebarRightOpen, undo, redo, navigateToPage } from '../../store/slices/canvasSlice';
+import { setScale, setTool, setSidebarLeftOpen, setSidebarRightOpen, undo, redo, navigateToPage, togglePageExtraction, setAnnotations } from '../../store/slices/canvasSlice';
 import { generatePDF } from '../../utils/pdfGenerator';
+import { pdfjs } from 'react-pdf';
+import { nanoid } from '@reduxjs/toolkit';
 import {
     ZoomIn,
     ZoomOut,
@@ -265,6 +267,80 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                             <ChevronRight className="w-4 h-4" />
                         </button>
                     </div>
+
+                    <div className="h-6 w-px bg-white/10" />
+
+                    {/* Extract Content Button */}
+                    <button
+                        onClick={async () => {
+                            const pageConfig = pages[currentPage - 1];
+                            if (!pageConfig || !pdfUrl) return;
+
+                            if (pageConfig.isExtracted) {
+                                // Toggle off: Just flip the flag.
+                                // NOTE: We are NOT removing annotations automatically to prevent data loss if user accidentally toggles.
+                                // User can manually delete layers if needed.
+                                dispatch(togglePageExtraction(pageConfig.id));
+                                return;
+                            }
+
+                            try {
+                                const loadingTask = pdfjs.getDocument(pdfUrl);
+                                const doc = await loadingTask.promise;
+                                const page = await doc.getPage(pageConfig.originalIndex);
+                                const textContent = await page.getTextContent();
+                                const viewport = page.getViewport({ scale: 1 });
+
+                                const newAnnotations: any[] = textContent.items.map((item: any) => {
+                                    // item.transform = [scaleX, skewY, skewX, scaleY, tx, ty]
+                                    const tx = item.transform;
+                                    const fontSize = Math.sqrt(tx[0] * tx[0] + tx[1] * tx[1]);
+                                    const width = item.width || 0;
+                                    const height = item.height || fontSize;
+
+                                    // Heuristic for Y position (PDF bottom-left origin vs Canvas top-left origin)
+                                    // We subtract fontSize to align roughly with top of text
+                                    const y = viewport.height - tx[5] - fontSize;
+
+                                    return {
+                                        id: nanoid(),
+                                        type: 'text',
+                                        x: tx[4],
+                                        y: y,
+                                        page: pageConfig.originalIndex,
+                                        content: item.str,
+                                        color: '#000000',
+                                        backgroundColor: '#ffffff', // Mask text
+                                        size: Math.round(fontSize),
+                                        minWidth: width + 2, // Add small buffer
+                                        minHeight: height,
+                                        isExtracted: true
+                                    };
+                                }).filter((a: any) => a.content.trim().length > 0);
+
+                                dispatch(setAnnotations(newAnnotations));
+                                dispatch(togglePageExtraction(pageConfig.id));
+
+                            } catch (error) {
+                                console.error("Failed to extract text:", error);
+                                alert("Failed to extract text from this page. See console for details.");
+                            }
+                        }}
+                        disabled={!pdfUrl || pages.length === 0}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-xs font-medium uppercase tracking-wider ${pages[currentPage - 1]?.isExtracted
+                            ? 'bg-green-500/10 border-green-500/50 text-green-400 hover:bg-green-500/20'
+                            : 'bg-slate-800/50 border-white/5 text-slate-400 hover:text-white hover:bg-white/5'
+                            } ${!pdfUrl ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        {pages[currentPage - 1]?.isExtracted ? 'Extracted' : 'Extract Content'}
+                    </button>
                 </div>
 
                 {/* Center: Zoom */}
@@ -288,10 +364,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
 
                 {/* Right: Extra & Sidebar Toggle */}
                 <div className="flex items-center gap-4">
-                    <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-400 bg-emerald-400/10 hover:bg-emerald-400/20 rounded-lg border border-emerald-400/20 transition-colors">
+                    {/* <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-400 bg-emerald-400/10 hover:bg-emerald-400/20 rounded-lg border border-emerald-400/20 transition-colors">
                         <AppWindow className="w-4 h-4" />
                         <span className="hidden sm:inline">Extract Content</span>
-                    </button>
+                    </button> */}
 
                     <div className="h-6 w-px bg-white/10" />
 
