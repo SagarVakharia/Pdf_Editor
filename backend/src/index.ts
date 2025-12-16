@@ -26,10 +26,10 @@ app.get('/health', (req, res) => {
 // Serve uploaded files (if any)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-if (require.main === module) {
-    app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-    });
-}
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    // Keep alive hack to debug premature exit
+    setInterval(() => { }, 10000);
+});
 
 export default app;

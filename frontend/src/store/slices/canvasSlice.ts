@@ -10,6 +10,7 @@ interface Annotation {
     path?: { x: number; y: number }[]; // For drawing
     color?: string;
     size?: number;
+    opacity?: number;
 }
 
 interface CanvasState {
@@ -17,9 +18,13 @@ interface CanvasState {
     currentPage: number;
     totalPages: number;
     scale: number;
-    tool: 'select' | 'text' | 'draw' | 'erase' | 'pan' | 'image' | 'sign';
+    tool: 'select' | 'hand' | 'text' | 'draw' | 'erase' | 'image' | 'sign' | 'shape';
     annotations: Annotation[];
     selectedAnnotationId: string | null;
+    sidebarLeftOpen: boolean;
+    sidebarRightOpen: boolean;
+    activeSidebarTab: 'pages' | 'layers';
+    activeRightTab: 'properties' | 'layers';
 }
 
 const initialState: CanvasState = {
@@ -30,6 +35,10 @@ const initialState: CanvasState = {
     tool: 'select',
     annotations: [],
     selectedAnnotationId: null,
+    sidebarLeftOpen: true,
+    sidebarRightOpen: true,
+    activeSidebarTab: 'pages',
+    activeRightTab: 'properties',
 };
 
 export const canvasSlice = createSlice({
@@ -67,12 +76,32 @@ export const canvasSlice = createSlice({
         setSelectedAnnotationId: (state, action: PayloadAction<string | null>) => {
             state.selectedAnnotationId = action.payload;
         },
+        updateAnnotationProperties: (state, action: PayloadAction<{ id: string; updates: Partial<Annotation> }>) => {
+            const index = state.annotations.findIndex(a => a.id === action.payload.id);
+            if (index !== -1) {
+                state.annotations[index] = { ...state.annotations[index], ...action.payload.updates };
+            }
+        },
+        setSidebarLeftOpen: (state, action: PayloadAction<boolean>) => {
+            state.sidebarLeftOpen = action.payload;
+        },
+        setSidebarRightOpen: (state, action: PayloadAction<boolean>) => {
+            state.sidebarRightOpen = action.payload;
+        },
+        setActiveSidebarTab: (state, action: PayloadAction<CanvasState['activeSidebarTab']>) => {
+            state.activeSidebarTab = action.payload;
+        },
+        setActiveRightTab: (state, action: PayloadAction<CanvasState['activeRightTab']>) => {
+            state.activeRightTab = action.payload;
+        },
     },
 });
 
 export const {
     setPdfUrl, setPage, setTotalPages, setScale, setTool,
-    addAnnotation, updateAnnotation, removeAnnotation, setSelectedAnnotationId
+    addAnnotation, updateAnnotation, removeAnnotation, setSelectedAnnotationId,
+    setSidebarLeftOpen, setSidebarRightOpen, setActiveSidebarTab, setActiveRightTab,
+    updateAnnotationProperties
 } = canvasSlice.actions;
 
 export default canvasSlice.reducer;
