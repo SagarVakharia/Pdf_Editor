@@ -13,10 +13,17 @@ interface Annotation {
     opacity?: number;
 }
 
+interface PageConfig {
+    id: string;
+    originalIndex: number; // 1-based index from the original PDF
+    rotation: number;     // 0, 90, 180, 270
+}
+
 interface CanvasState {
     pdfUrl: string | null;
     currentPage: number;
     totalPages: number;
+    pages: PageConfig[]; // Virtual pages
     scale: number;
     tool: 'select' | 'hand' | 'text' | 'draw' | 'erase' | 'image' | 'sign' | 'shape';
     annotations: Annotation[];
@@ -31,6 +38,7 @@ const initialState: CanvasState = {
     pdfUrl: null,
     currentPage: 1,
     totalPages: 0,
+    pages: [],
     scale: 1,
     tool: 'select',
     annotations: [],
@@ -53,6 +61,65 @@ export const canvasSlice = createSlice({
         },
         setTotalPages: (state, action: PayloadAction<number>) => {
             state.totalPages = action.payload;
+            // Initialize virtual pages if empty or count changed (simple reset for now)
+            if (state.pages.length === 0 || state.pages.length !== action.payload) {
+                state.pages = Array.from({ length: action.payload }, (_, i) => ({
+                    id: `page-${i + 1}`,
+                    originalIndex: i + 1,
+                    rotation: 0
+                }));
+            }
+        },
+        initPages: (state, action: PayloadAction<number>) => {
+            state.pages = Array.from({ length: action.payload }, (_, i) => ({
+                id: `page-${i + 1}`,
+                originalIndex: i + 1,
+                rotation: 0
+            }));
+        },
+        rotatePage: (state, action: PayloadAction<{ id: string, rotation: number }>) => {
+            const page = state.pages.find(p => p.id === action.payload.id);
+            if (page) {
+                page.rotation = action.payload.rotation;
+            }
+        },
+        deletePage: (state, action: PayloadAction<string>) => {
+            state.pages = state.pages.filter(p => p.id !== action.payload);
+
+            // Adjust current page if needed
+            if (state.pages.length > 0) {
+                // Determine new index (clamp to valid range)
+                const currentIdx = state.pages.findIndex(p => p.id === action.payload);
+                // If we deleted the current viewing page, move to the nearest one
+                // But wait, we don't know which one user was viewing by ID easily unless we track it differently.
+                // For now, ensure currentPage index is within bounds of state.pages.length
+                if (state.currentPage > state.pages.length) {
+                    state.currentPage = state.pages.length;
+                }
+            } else {
+                state.currentPage = 1;
+            }
+            state.totalPages = state.pages.length;
+        },
+        reorderPages: (state, action: PayloadAction<{ activeId: string, overId: string }>) => {
+            const oldIndex = state.pages.findIndex(p => p.id === action.payload.activeId);
+            const newIndex = state.pages.findIndex(p => p.id === action.payload.overId);
+
+            if (oldIndex !== -1 && newIndex !== -1) {
+                const [movedPage] = state.pages.splice(oldIndex, 1);
+                state.pages.splice(newIndex, 0, movedPage);
+            }
+        },
+        movePage: (state, action: PayloadAction<{ id: string, direction: 'up' | 'down' }>) => {
+            const index = state.pages.findIndex(p => p.id === action.payload.id);
+            if (index === -1) return;
+
+            const newIndex = action.payload.direction === 'up' ? index - 1 : index + 1;
+
+            if (newIndex >= 0 && newIndex < state.pages.length) {
+                const [movedPage] = state.pages.splice(index, 1);
+                state.pages.splice(newIndex, 0, movedPage);
+            }
         },
         setScale: (state, action: PayloadAction<number>) => {
             state.scale = action.payload;
@@ -99,6 +166,7 @@ export const canvasSlice = createSlice({
 
 export const {
     setPdfUrl, setPage, setTotalPages, setScale, setTool,
+    initPages, rotatePage, deletePage, reorderPages, movePage,
     addAnnotation, updateAnnotation, removeAnnotation, setSelectedAnnotationId,
     setSidebarLeftOpen, setSidebarRightOpen, setActiveSidebarTab, setActiveRightTab,
     updateAnnotationProperties

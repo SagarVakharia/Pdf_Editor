@@ -14,7 +14,11 @@ const PDFViewer = dynamic(() => import('./PDFViewer').then(mod => mod.PDFViewer)
     loading: () => <div className="text-slate-500">Loading PDF engine...</div>
 });
 
-import { LeftSidebar } from './LeftSidebar';
+const LeftSidebar = dynamic(() => import('./LeftSidebar').then(mod => mod.LeftSidebar), {
+    ssr: false,
+    loading: () => <div className="w-64 bg-sidebar border-r border-white/10" />
+});
+
 import { RightSidebar } from './RightSidebar';
 
 export const EditorLayout: React.FC = () => {

@@ -1,10 +1,40 @@
-"use client";
-
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
-import { setActiveSidebarTab } from '../../store/slices/canvasSlice';
+import {
+    setActiveSidebarTab,
+    rotatePage,
+    deletePage,
+    reorderPages,
+    movePage,
+    setPage
+} from '../../store/slices/canvasSlice';
 import { Layers, Grid } from 'lucide-react';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { SortablePageItem } from './SortablePageItem';
+import { Document, pdfjs } from 'react-pdf';
+
+// Ensure worker is configured
+if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+        'pdfjs-dist/build/pdf.worker.min.mjs',
+        import.meta.url,
+    ).toString();
+}
 
 export const LeftSidebar: React.FC = () => {
     const dispatch = useDispatch();
@@ -12,9 +42,26 @@ export const LeftSidebar: React.FC = () => {
         sidebarLeftOpen,
         activeSidebarTab,
         currentPage,
-        totalPages,
+        pages,
         pdfUrl
     } = useSelector((state: RootState) => state.canvas);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            dispatch(reorderPages({
+                activeId: active.id as string,
+                overId: over.id as string
+            }));
+        }
+    };
 
     if (!sidebarLeftOpen) return null;
 
@@ -52,20 +99,33 @@ export const LeftSidebar: React.FC = () => {
                                 No document
                             </div>
                         ) : (
-                            // Placeholder for page thumbnails
-                            Array.from({ length: Math.max(1, totalPages) }).map((_, i) => (
-                                <div
-                                    key={i}
-                                    className={`aspect-[3/4] bg-white rounded-lg shadow-sm border-2 transition-all cursor-pointer ${currentPage === i + 1
-                                        ? 'border-indigo-500 ring-4 ring-indigo-500/20'
-                                        : 'border-transparent hover:border-white/20'
-                                        }`}
+                            <Document file={pdfUrl} className="flex flex-col gap-3">
+                                <DndContext
+                                    sensors={sensors}
+                                    collisionDetection={closestCenter}
+                                    onDragEnd={handleDragEnd}
                                 >
-                                    <div className="h-full w-full flex items-center justify-center text-slate-300 text-xs">
-                                        Page {i + 1}
-                                    </div>
-                                </div>
-                            ))
+                                    <SortableContext
+                                        items={pages.map(p => p.id)}
+                                        strategy={verticalListSortingStrategy}
+                                    >
+                                        <div className="space-y-3">
+                                            {pages.map((page, i) => (
+                                                <SortablePageItem
+                                                    key={page.id}
+                                                    page={page}
+                                                    index={i}
+                                                    isActive={currentPage === i + 1}
+                                                    onClick={() => dispatch(setPage(i + 1))}
+                                                    onRotate={(id, rot) => dispatch(rotatePage({ id, rotation: rot }))}
+                                                    onDelete={(id) => dispatch(deletePage(id))}
+                                                    onMove={(id, dir) => dispatch(movePage({ id, direction: dir }))}
+                                                />
+                                            ))}
+                                        </div>
+                                    </SortableContext>
+                                </DndContext>
+                            </Document>
                         )}
                     </div>
                 ) : (

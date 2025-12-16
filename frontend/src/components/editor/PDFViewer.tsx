@@ -1,5 +1,8 @@
 "use client";
 
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
+import { setTotalPages, setPage } from '../../store/slices/canvasSlice';
 import React, { useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { FileText, Image as ImageIcon, PenTool } from 'lucide-react';
@@ -22,11 +25,40 @@ interface PDFViewerProps {
 }
 
 export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale }) => {
+    const dispatch = useDispatch();
     const [numPages, setNumPages] = useState<number>(0);
+    const { pages } = useSelector((state: RootState) => state.canvas);
 
     function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
         setNumPages(numPages);
+        dispatch(setTotalPages(numPages));
     }
+
+    // Scroll synchronization
+    React.useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        const pageId = entry.target.getAttribute('data-page-index');
+                        if (pageId) {
+                            dispatch(setPage(parseInt(pageId, 10)));
+                        }
+                    }
+                });
+            },
+            {
+                root: null,
+                rootMargin: '-50% 0px -50% 0px', // Trigger when page is in middle of viewport
+                threshold: 0
+            }
+        );
+
+        const pageElements = document.querySelectorAll('.pdf-page-wrapper');
+        pageElements.forEach((el) => observer.observe(el));
+
+        return () => observer.disconnect();
+    }, [pages, dispatch]); // Re-run when pages change (reordering/add/delete)
 
     if (!file) {
         return (
@@ -61,6 +93,8 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale }) => {
         );
     }
 
+
+
     return (
         <div className="flex justify-center p-8 min-h-full bg-slate-950/50">
             <div className="shadow-2xl">
@@ -69,21 +103,40 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale }) => {
                     onLoadSuccess={onDocumentLoadSuccess}
                     className="flex flex-col gap-4"
                 >
-                    {/* Render all pages for now, or implement virtualization later */}
-                    {Array.from(new Array(numPages), (el, index) => (
-                        <div key={`page_wrapper_${index + 1}`} className="relative">
-                            <Page
-                                key={`page_${index + 1}`}
-                                pageNumber={index + 1}
-                                scale={scale}
-                                className="bg-white"
-                                renderTextLayer={true}
-                                renderAnnotationLayer={true}
-                            />
-                            <TextLayer pageNumber={index + 1} scale={scale} />
-                            <DrawLayer pageNumber={index + 1} scale={scale} />
-                            <ImageLayer pageNumber={index + 1} scale={scale} />
-                            <HandLayer scale={scale} />
+                    {/* Render pages in virtual order */}
+                    {pages.map((page, index) => (
+                        <div
+                            key={page.id}
+                            className="relative transition-all duration-300 pdf-page-wrapper"
+                            data-page-index={index + 1}
+                            id={`page-${index + 1}`}
+                        >
+                            <div style={{ transform: `rotate(${page.rotation}deg)` }} className="transition-transform origin-center">
+                                <Page
+                                    pageNumber={page.originalIndex}
+                                    scale={scale}
+                                    className="bg-white shadow-lg"
+                                    renderTextLayer={true}
+                                    renderAnnotationLayer={true}
+                                />
+                            </div>
+                            {/* Layers overlay */}
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    transform: `rotate(${page.rotation}deg)`,
+                                    pointerEvents: 'none'
+                                }}
+                                className="origin-center"
+                            >
+                                <div style={{ pointerEvents: 'auto', width: '100%', height: '100%' }}>
+                                    <TextLayer pageNumber={page.originalIndex} scale={scale} />
+                                    <DrawLayer pageNumber={page.originalIndex} scale={scale} />
+                                    <ImageLayer pageNumber={page.originalIndex} scale={scale} />
+                                    <HandLayer scale={scale} />
+                                </div>
+                            </div>
                         </div>
                     ))}
                 </Document>

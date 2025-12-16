@@ -148,7 +148,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
 
                     <button className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-lg shadow-indigo-500/20 transition-all text-sm font-medium whitespace-nowrap">
                         <Download className="w-4 h-4" />
-                        <span>Save</span>
+                        <span>Download</span>
                     </button>
                 </div>
             </div>
