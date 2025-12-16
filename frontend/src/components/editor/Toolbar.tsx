@@ -1,7 +1,7 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
-import { setScale, setTool, setSidebarLeftOpen, setSidebarRightOpen, undo, redo } from '../../store/slices/canvasSlice';
+import { setScale, setTool, setSidebarLeftOpen, setSidebarRightOpen, undo, redo, navigateToPage } from '../../store/slices/canvasSlice';
 import { generatePDF } from '../../utils/pdfGenerator';
 import {
     ZoomIn,
@@ -247,13 +247,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                     <div className="h-6 w-px bg-white/10" />
 
                     <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg p-1 border border-white/5">
-                        <button className="p-1 hover:bg-white/10 rounded transition-colors text-slate-400 disabled:opacity-50">
+                        <button
+                            onClick={() => dispatch(navigateToPage(Math.max(1, currentPage - 1)))}
+                            disabled={currentPage <= 1}
+                            className="p-1 hover:bg-white/10 rounded transition-colors text-slate-400 disabled:opacity-50"
+                        >
                             <ChevronLeft className="w-4 h-4" />
                         </button>
                         <span className="text-sm font-medium text-slate-300 px-2 min-w-[5rem] text-center">
                             Page {currentPage} of {Math.max(1, totalPages)}
                         </span>
-                        <button className="p-1 hover:bg-white/10 rounded transition-colors text-slate-400 disabled:opacity-50">
+                        <button
+                            onClick={() => dispatch(navigateToPage(Math.min(totalPages, currentPage + 1)))}
+                            disabled={currentPage >= totalPages}
+                            className="p-1 hover:bg-white/10 rounded transition-colors text-slate-400 disabled:opacity-50"
+                        >
                             <ChevronRight className="w-4 h-4" />
                         </button>
                     </div>
