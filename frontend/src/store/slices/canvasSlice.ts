@@ -81,6 +81,11 @@ export const canvasSlice = createSlice({
     reducers: {
         setPdfUrl: (state, action: PayloadAction<string | null>) => {
             state.pdfUrl = action.payload;
+            state.pages = [];
+            state.annotations = [];
+            state.totalPages = 0;
+            state.currentPage = 1;
+            state.selectedAnnotationId = null;
             state.history = { past: [], future: [] }; // Reset history on new file
         },
         setPage: (state, action: PayloadAction<number>) => {
