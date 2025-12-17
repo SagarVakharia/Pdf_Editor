@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import { setScale, setTool, setSidebarLeftOpen, setSidebarRightOpen, undo, redo, navigateToPage, togglePageExtraction, setAnnotations } from '../../store/slices/canvasSlice';
 import { generatePDF } from '../../utils/pdfGenerator';
-import { pdfjs } from 'react-pdf';
+// import { pdfjs } from 'react-pdf'; // Dynamically imported to avoid SSR issues
 import { nanoid } from '@reduxjs/toolkit';
 import {
     ZoomIn,
@@ -285,6 +285,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                             }
 
                             try {
+                                const { pdfjs } = await import('react-pdf');
+                                console.log('Current workerSrc:', pdfjs.GlobalWorkerOptions.workerSrc);
+                                if (!pdfjs.GlobalWorkerOptions.workerSrc || pdfjs.GlobalWorkerOptions.workerSrc.indexOf('cdn') === -1) {
+                                    // Force local worker if not set or if we suspect issues
+                                    pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+                                }
+                                console.log('Using workerSrc:', pdfjs.GlobalWorkerOptions.workerSrc);
                                 const loadingTask = pdfjs.getDocument(pdfUrl);
                                 const doc = await loadingTask.promise;
                                 const page = await doc.getPage(pageConfig.originalIndex);

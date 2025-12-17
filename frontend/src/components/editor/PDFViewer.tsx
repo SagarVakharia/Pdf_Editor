@@ -14,10 +14,8 @@ import { HandLayer } from '@/components/editor/tools/HandLayer';
 import { ImageLayer } from '@/components/editor/tools/ImageLayer';
 import { nanoid } from '@reduxjs/toolkit';
 import { addAnnotation, setSelectedAnnotationId } from '../../store/slices/canvasSlice';
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url,
-).toString();
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+console.log('PDFViewer initialized workerSrc:', pdfjs.GlobalWorkerOptions.workerSrc);
 
 interface PDFViewerProps {
     file: File | string | null;
@@ -97,34 +95,84 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale }) => {
 
         // IF clicked on existing text, extract its properties
         if (isTextSpan) {
-            const spanRect = target.getBoundingClientRect();
+            // LINE AGGREGATION LOGIC
+            const parent = target.parentElement;
+            if (parent) {
+                const targetRect = target.getBoundingClientRect();
+                const targetTop = targetRect.top;
+                const tolerance = 5; // px tolerance for "same line"
 
-            // HIDE ORIGINAL ELEMENT IMMEDIATELY
-            target.style.opacity = '0';
-            target.style.pointerEvents = 'none'; // Prevent further interaction with hidden element
+                // 1. Find all sibling spans on the same visual line
+                const siblings = Array.from(parent.children) as HTMLElement[];
+                const lineSpans = siblings.filter(span => {
+                    if (span.tagName !== 'SPAN') return false;
+                    const r = span.getBoundingClientRect();
+                    // Check if top align matches roughly
+                    return Math.abs(r.top - targetTop) < tolerance;
+                });
 
-            // Adjust coordinates to exactly match the existing text
-            finalX = (spanRect.left - rect.left) / scale;
-            finalY = (spanRect.top - rect.top) / scale;
+                // 2. Sort by Left position (X)
+                lineSpans.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
 
-            // Extract styling
-            content = target.innerText;
+                // 3. Aggregate Content & Dimensions
+                content = lineSpans.map(s => s.innerText).join(' ').trim(); // Naive join, simpler than exact spacing
 
-            // Capture dimensions for masking
-            minW = (spanRect.width / scale) + 5;
-            minH = (spanRect.height / scale);
+                // Calculate union bounding box
+                const firstRect = lineSpans[0].getBoundingClientRect();
+                const lastRect = lineSpans[lineSpans.length - 1].getBoundingClientRect();
 
-            // Get computed font properties
-            const computedStyle = window.getComputedStyle(target);
-            const computedFontSize = parseFloat(computedStyle.fontSize);
-            if (!isNaN(computedFontSize)) {
-                fontSize = computedFontSize / scale;
+                const unionLeft = firstRect.left;
+                const unionTop = firstRect.top; // Use first element's top
+
+                // Total width is from left of first to right of last
+                const unionWidth = lastRect.right - firstRect.left;
+                const unionHeight = Math.max(...lineSpans.map(s => s.getBoundingClientRect().height));
+
+                // 4. Hide ALL involved spans
+                lineSpans.forEach(span => {
+                    span.style.opacity = '0';
+                    span.style.pointerEvents = 'none';
+                });
+
+                // 5. Set final coordinates based on Union Box
+                finalX = (unionLeft - rect.left) / scale;
+                finalY = (unionTop - rect.top) / scale;
+
+                minW = (unionWidth / scale) + 5;
+                minH = (unionHeight / scale);
+
+                // Extract Style from the clicked element (assume consistent style across line)
+                const computedStyle = window.getComputedStyle(target);
+                const computedFontSize = parseFloat(computedStyle.fontSize);
+                if (!isNaN(computedFontSize)) {
+                    fontSize = computedFontSize / scale;
+                }
+
+                fontFamily = computedStyle.fontFamily || 'Arial';
+                const fontWeight = computedStyle.fontWeight;
+                isBold = fontWeight === 'bold' || parseInt(fontWeight) >= 700;
+                isItalic = computedStyle.fontStyle === 'italic';
+
+            } else {
+                // Fallback
+                const spanRect = target.getBoundingClientRect();
+                target.style.opacity = '0';
+                target.style.pointerEvents = 'none';
+
+                finalX = (spanRect.left - rect.left) / scale;
+                finalY = (spanRect.top - rect.top) / scale;
+                content = target.innerText;
+                minW = (spanRect.width / scale) + 5;
+                minH = (spanRect.height / scale);
+
+                const computedStyle = window.getComputedStyle(target);
+                const computedFontSize = parseFloat(computedStyle.fontSize);
+                if (!isNaN(computedFontSize)) fontSize = computedFontSize / scale;
+                fontFamily = computedStyle.fontFamily || 'Arial';
+                const fontWeight = computedStyle.fontWeight;
+                isBold = fontWeight === 'bold' || parseInt(fontWeight) >= 700;
+                isItalic = computedStyle.fontStyle === 'italic';
             }
-
-            fontFamily = computedStyle.fontFamily || 'Arial';
-            const fontWeight = computedStyle.fontWeight;
-            isBold = fontWeight === 'bold' || parseInt(fontWeight) >= 700;
-            isItalic = computedStyle.fontStyle === 'italic';
         }
 
         const id = nanoid();
