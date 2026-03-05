@@ -57,6 +57,7 @@ export const TextLayer: React.FC<TextLayerProps> = ({ pageNumber, scale }) => {
                             className="bg-transparent outline-none w-full min-w-[50px]"
                             value={ann.content || ''}
                             onChange={(e) => dispatch(updateAnnotation({ ...ann, content: e.target.value }))}
+                            autoFocus
                         />
                     ) : (
                         <span>{ann.content || 'Empty'}</span>

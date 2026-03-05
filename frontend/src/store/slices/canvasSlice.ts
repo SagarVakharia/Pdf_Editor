@@ -186,6 +186,11 @@ export const canvasSlice = createSlice({
             saveHistory(state);
             state.annotations = state.annotations.filter(a => a.id !== action.payload);
         },
+        removeAnnotations: (state, action: PayloadAction<string[]>) => {
+            saveHistory(state);
+            const idsToRemove = new Set(action.payload);
+            state.annotations = state.annotations.filter(a => !idsToRemove.has(a.id));
+        },
         setSelectedAnnotationId: (state, action: PayloadAction<string | null>) => {
             state.selectedAnnotationId = action.payload;
         },
@@ -250,7 +255,7 @@ export const {
     initPages, rotatePage, deletePage, reorderPages, movePage,
     addAnnotation, updateAnnotation, removeAnnotation, setSelectedAnnotationId,
     setSidebarLeftOpen, setSidebarRightOpen, setActiveSidebarTab, setActiveRightTab,
-    updateAnnotationProperties, undo, redo, navigateToPage, togglePageExtraction, setAnnotations
+    updateAnnotationProperties, undo, redo, navigateToPage, togglePageExtraction, setAnnotations, removeAnnotations
 } = canvasSlice.actions;
 
 export default canvasSlice.reducer;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
-import { setScale, setTool, setSidebarLeftOpen, setSidebarRightOpen, undo, redo, navigateToPage, togglePageExtraction, setAnnotations } from '../../store/slices/canvasSlice';
+import { setScale, setTool, setSidebarLeftOpen, setSidebarRightOpen, undo, redo, navigateToPage, togglePageExtraction, setAnnotations, removeAnnotations } from '../../store/slices/canvasSlice';
 import { generatePDF } from '../../utils/pdfGenerator';
 // import { pdfjs } from 'react-pdf'; // Dynamically imported to avoid SSR issues
 import { nanoid } from '@reduxjs/toolkit';
@@ -277,53 +277,102 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                             if (!pageConfig || !pdfUrl) return;
 
                             if (pageConfig.isExtracted) {
-                                // Toggle off: Just flip the flag.
-                                // NOTE: We are NOT removing annotations automatically to prevent data loss if user accidentally toggles.
-                                // User can manually delete layers if needed.
+                                // Toggle off: Remove extracted annotations and flip flag
+                                const extractedIds = annotations
+                                    .filter(a => a.page === pageConfig.originalIndex && a.isExtracted)
+                                    .map(a => a.id);
+                                if (extractedIds.length > 0) {
+                                    dispatch(removeAnnotations(extractedIds));
+                                }
                                 dispatch(togglePageExtraction(pageConfig.id));
                                 return;
                             }
 
                             try {
                                 const { pdfjs } = await import('react-pdf');
-                                console.log('Current workerSrc:', pdfjs.GlobalWorkerOptions.workerSrc);
                                 if (!pdfjs.GlobalWorkerOptions.workerSrc || pdfjs.GlobalWorkerOptions.workerSrc.indexOf('cdn') === -1) {
-                                    // Force local worker if not set or if we suspect issues
                                     pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
                                 }
-                                console.log('Using workerSrc:', pdfjs.GlobalWorkerOptions.workerSrc);
+
                                 const loadingTask = pdfjs.getDocument(pdfUrl);
                                 const doc = await loadingTask.promise;
                                 const page = await doc.getPage(pageConfig.originalIndex);
                                 const textContent = await page.getTextContent();
                                 const viewport = page.getViewport({ scale: 1 });
 
-                                const newAnnotations: any[] = textContent.items.map((item: any) => {
-                                    // item.transform = [scaleX, skewY, skewX, scaleY, tx, ty]
-                                    const tx = item.transform;
-                                    const fontSize = Math.sqrt(tx[0] * tx[0] + tx[1] * tx[1]);
-                                    const width = item.width || 0;
-                                    const height = item.height || fontSize;
+                                // Group items by line (Y position)
+                                const items = textContent.items as any[];
+                                const lines: any[][] = [];
+                                const tolerance = 5;
 
-                                    // Heuristic for Y position (PDF bottom-left origin vs Canvas top-left origin)
-                                    // We subtract fontSize to align roughly with top of text
-                                    const y = viewport.height - tx[5] - fontSize;
+                                // Sort by Y (descending) then X (ascending) to help clustering
+                                const sortedItems = [...items].sort((a, b) => {
+                                    const dy = b.transform[5] - a.transform[5];
+                                    if (Math.abs(dy) > tolerance) return dy;
+                                    return a.transform[4] - b.transform[4];
+                                });
+
+                                for (const item of sortedItems) {
+                                    const itemY = item.transform[5];
+                                    // Find a matching line
+                                    const line = lines.find(l => Math.abs(l[0].transform[5] - itemY) < tolerance);
+                                    if (line) {
+                                        line.push(item);
+                                    } else {
+                                        lines.push([item]);
+                                    }
+                                }
+
+                                const newAnnotations: any[] = lines.map(lineItems => {
+                                    // Sort by X inside the line
+                                    lineItems.sort((a, b) => a.transform[4] - b.transform[4]);
+
+                                    const first = lineItems[0];
+                                    const last = lineItems[lineItems.length - 1];
+
+                                    // Aggregate text. 
+                                    let content = "";
+                                    let lastX = first.transform[4];
+                                    let lastWidth = first.width || 0;
+
+                                    lineItems.forEach((item, idx) => {
+                                        if (idx > 0) {
+                                            const gap = item.transform[4] - (lastX + lastWidth);
+                                            // Add space if appreciable gap
+                                            if (gap > 2) content += " ";
+                                        }
+                                        content += item.str;
+                                        lastX = item.transform[4];
+                                        lastWidth = item.width || 0;
+                                    });
+
+                                    // Calc bounding box
+                                    const tx = first.transform;
+                                    const fontSize = Math.sqrt(tx[0] * tx[0] + tx[1] * tx[1]);
+                                    const x = first.transform[4];
+                                    const pdfY = first.transform[5];
+                                    // Adjust Y to top-left
+                                    const y = viewport.height - pdfY - fontSize;
+
+                                    const width = (last.transform[4] + (last.width || 0)) - first.transform[4];
+                                    // const height = fontSize * 1.2; 
 
                                     return {
                                         id: nanoid(),
                                         type: 'text',
-                                        x: tx[4],
+                                        x: x,
                                         y: y,
                                         page: pageConfig.originalIndex,
-                                        content: item.str,
+                                        content: content,
                                         color: '#000000',
                                         backgroundColor: '#ffffff', // Mask text
                                         size: Math.round(fontSize),
-                                        minWidth: width + 2, // Add small buffer
-                                        minHeight: height,
-                                        isExtracted: true
+                                        minWidth: width,
+                                        isExtracted: true,
+                                        fontFamily: 'Arial', // Default font
+                                        textAlign: 'left'
                                     };
-                                }).filter((a: any) => a.content.trim().length > 0);
+                                }).filter(a => a.content.trim().length > 0);
 
                                 dispatch(setAnnotations(newAnnotations));
                                 dispatch(togglePageExtraction(pageConfig.id));
