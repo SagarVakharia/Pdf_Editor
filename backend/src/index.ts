@@ -26,7 +26,7 @@ app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok' });
 });
 
-app.get('/api/proxy', async (req, res) => {
+app.get(['/proxy', '/api/proxy'], async (req, res) => {
     const url = req.query.url as string;
     if (!url) {
         res.status(400).send('URL is required');

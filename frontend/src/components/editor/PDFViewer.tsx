@@ -56,7 +56,9 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
             let targetUrl = urlInput.trim();
             // CORS proxy for external URLs
             if (targetUrl.startsWith('http') && !targetUrl.includes(window.location.host)) {
-                targetUrl = `http://localhost:3001/api/proxy?url=${encodeURIComponent(targetUrl)}`;
+                const isProduction = process.env.NODE_ENV === 'production' || !window.location.hostname.includes('localhost');
+                const backendBaseUrl = isProduction ? '' : 'http://localhost:3001';
+                targetUrl = `${backendBaseUrl}/api/proxy?url=${encodeURIComponent(targetUrl)}`;
             }
             dispatch(setPdfUrl(targetUrl));
         } catch (error) {
