@@ -2,7 +2,7 @@
 
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
-import { setTotalPages, setPage } from '../../store/slices/canvasSlice';
+import { setTotalPages, setPage, setPdfUrl } from '../../store/slices/canvasSlice';
 import React, { useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { FileText, Image as ImageIcon, PenTool } from 'lucide-react';
@@ -14,18 +14,58 @@ import { HandLayer } from '@/components/editor/tools/HandLayer';
 import { ImageLayer } from '@/components/editor/tools/ImageLayer';
 import { nanoid } from '@reduxjs/toolkit';
 import { addAnnotation, setSelectedAnnotationId } from '../../store/slices/canvasSlice';
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 console.log('PDFViewer initialized workerSrc:', pdfjs.GlobalWorkerOptions.workerSrc);
 
 interface PDFViewerProps {
     file: File | string | null;
     scale: number;
+    onUpload?: () => void;
 }
 
-export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale }) => {
+export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) => {
     const dispatch = useDispatch();
     const [numPages, setNumPages] = useState<number>(0);
-    const { pages, navigationRequest, tool: currentTool } = useSelector((state: RootState) => state.canvas);
+    const [urlInput, setUrlInput] = useState('');
+    const [isLoadingUrl, setIsLoadingUrl] = useState(false);
+    const { pages, annotations, navigationRequest, tool: currentTool } = useSelector((state: RootState) => state.canvas);
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const droppedFile = e.dataTransfer.files?.[0];
+        if (droppedFile && droppedFile.type === 'application/pdf') {
+            if (file && typeof file === 'string' && file.startsWith('blob:')) {
+                URL.revokeObjectURL(file);
+            }
+            const url = URL.createObjectURL(droppedFile);
+            dispatch(setPdfUrl(url));
+        }
+    };
+
+    const handleLoadUrl = async () => {
+        if (!urlInput.trim()) return;
+        setIsLoadingUrl(true);
+        try {
+            let targetUrl = urlInput.trim();
+            // CORS proxy for external URLs
+            if (targetUrl.startsWith('http') && !targetUrl.includes(window.location.host)) {
+                targetUrl = `http://localhost:3001/api/proxy?url=${encodeURIComponent(targetUrl)}`;
+            }
+            dispatch(setPdfUrl(targetUrl));
+        } catch (error) {
+            console.error("Failed to load PDF from URL:", error);
+            alert("Failed to load PDF from URL. Ensure it is a valid PDF link.");
+        } finally {
+            setIsLoadingUrl(false);
+        }
+    };
 
     function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
         setNumPages(numPages);
@@ -83,6 +123,16 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale }) => {
         const x = (e.clientX - rect.left) / scale;
         const y = (e.clientY - rect.top) / scale;
 
+        // Prevent double extraction by checking if there's already an annotation nearby on the same page
+        const isAlreadyExtracted = annotations.some(a => 
+            a.page === pageIndex && 
+            a.type === 'text' && 
+            !a.isDeleted &&
+            Math.abs(a.x - x) < 15 && 
+            Math.abs(a.y - y) < 15
+        );
+        if (isAlreadyExtracted) return;
+
         let content = 'New Text';
         let fontSize = 16;
         let finalX = x;
@@ -92,9 +142,11 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale }) => {
         let fontFamily = 'Arial';
         let isBold = false;
         let isItalic = false;
+        let isExtracted = false;
 
         // IF clicked on existing text, extract its properties
         if (isTextSpan) {
+            isExtracted = true;
             // LINE AGGREGATION LOGIC
             const parent = target.parentElement;
             if (parent) {
@@ -191,45 +243,76 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale }) => {
             textAlign: 'left',
             fontFamily: fontFamily.replace(/['"]/g, ''), // Clean quotes from font family
             isBold,
-            isItalic
+            isItalic,
+            isExtracted,
+            maskX: isExtracted ? finalX : undefined,
+            maskY: isExtracted ? finalY : undefined,
+            maskWidth: isExtracted ? minW : undefined,
+            maskHeight: isExtracted ? minH : undefined
         }));
         dispatch(setSelectedAnnotationId(id));
     };
 
     if (!file) {
         return (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400">
-                <div className="bg-[var(--sidebar)] p-8 rounded-2xl border border-white/5 shadow-2xl mb-8 flex flex-col items-center">
-                    <div className="w-24 h-24 bg-[var(--surface)] rounded-2xl flex items-center justify-center mb-6 border border-white/5 shadow-[0_0_30px_rgba(99,102,241,0.15)]">
+            <div 
+                className="flex flex-col items-center justify-center h-full text-slate-400 py-12 px-4"
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+            >
+                <div 
+                    onClick={onUpload}
+                    className="bg-[var(--sidebar)] p-8 rounded-2xl border border-white/5 shadow-2xl mb-8 flex flex-col items-center cursor-pointer hover:border-indigo-500/30 hover:bg-slate-900/40 transition-all max-w-lg w-full group"
+                >
+                    <div className="w-24 h-24 bg-[var(--surface)] rounded-2xl flex items-center justify-center mb-6 border border-white/5 shadow-[0_0_30px_rgba(99,102,241,0.15)] group-hover:border-indigo-500/30 group-hover:scale-105 transition-all">
                         <FileText className="w-12 h-12 text-[var(--primary)] opacity-90 drop-shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
                     </div>
                     <div className="text-center">
                         <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">No PDF Loaded</h3>
                         <p className="text-sm text-slate-500 max-w-xs mx-auto mb-8 font-medium">
-                            Click or drag a PDF document here to start editing
+                            Click here to browse or drag and drop a PDF file to begin editing.
                         </p>
 
                         <div className="flex items-center gap-3 justify-center">
-                            <button className="flex items-center gap-2 px-4 py-2 bg-[var(--surface)] hover:bg-white/5 border border-white/10 rounded-lg text-sm font-medium transition-colors hover:border-indigo-500/50 hover:text-white group">
-                                <FileText className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform" />
+                            <span className="flex items-center gap-2 px-4 py-2 bg-[var(--surface)] border border-white/10 rounded-lg text-sm font-medium transition-colors hover:text-white">
+                                <FileText className="w-4 h-4 text-indigo-400" />
                                 Edit Text
-                            </button>
-                            <button className="flex items-center gap-2 px-4 py-2 bg-[var(--surface)] hover:bg-white/5 border border-white/10 rounded-lg text-sm font-medium transition-colors hover:border-purple-500/50 hover:text-white group">
-                                <ImageIcon className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
+                            </span>
+                            <span className="flex items-center gap-2 px-4 py-2 bg-[var(--surface)] border border-white/10 rounded-lg text-sm font-medium transition-colors hover:text-white">
+                                <ImageIcon className="w-4 h-4 text-purple-400" />
                                 Add Images
-                            </button>
-                            <button className="flex items-center gap-2 px-4 py-2 bg-[var(--surface)] hover:bg-white/5 border border-white/10 rounded-lg text-sm font-medium transition-colors hover:border-emerald-500/50 hover:text-white group">
-                                <PenTool className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
-                                Sign Documents
-                            </button>
+                            </span>
+                            <span className="flex items-center gap-2 px-4 py-2 bg-[var(--surface)] border border-white/10 rounded-lg text-sm font-medium transition-colors hover:text-white">
+                                <PenTool className="w-4 h-4 text-emerald-400" />
+                                Sign PDFs
+                            </span>
                         </div>
+                    </div>
+                </div>
+
+                {/* URL Loader Section */}
+                <div className="bg-[var(--sidebar)] p-6 rounded-2xl border border-white/5 shadow-2xl max-w-lg w-full">
+                    <h4 className="text-sm font-semibold text-white mb-3">Or load a document from URL</h4>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            placeholder="https://example.com/document.pdf"
+                            value={urlInput}
+                            onChange={(e) => setUrlInput(e.target.value)}
+                            className="flex-1 bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                        />
+                        <button
+                            onClick={handleLoadUrl}
+                            disabled={isLoadingUrl}
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                        >
+                            {isLoadingUrl ? 'Loading...' : 'Load'}
+                        </button>
                     </div>
                 </div>
             </div>
         );
     }
-
-
 
     return (
         <div className="flex justify-center p-8 min-h-full bg-slate-950/50">
@@ -248,32 +331,24 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale }) => {
                             id={`page-${index + 1}`}
                             onClick={(e) => handlePageClick(e, page.originalIndex)}
                         >
-                            <div style={{ transform: `rotate(${page.rotation}deg)` }} className="transition-transform origin-center">
-                                <Page
-                                    pageNumber={page.originalIndex}
-                                    scale={scale}
-                                    className="bg-white shadow-lg"
-                                    renderTextLayer={!page.isExtracted}
-                                    renderAnnotationLayer={true}
-                                />
-                            </div>
-                            {/* Layers overlay */}
-                            <div
-                                style={{
-                                    position: 'absolute',
-                                    inset: 0,
-                                    transform: `rotate(${page.rotation}deg)`,
-                                    pointerEvents: 'none'
-                                }}
-                                className="origin-center"
+                            <Page
+                                pageNumber={page.originalIndex}
+                                scale={scale}
+                                rotate={page.rotation}
+                                className="bg-white shadow-lg relative"
+                                renderTextLayer={!page.isExtracted}
+                                renderAnnotationLayer={true}
                             >
-                                <div style={{ pointerEvents: 'auto', width: '100%', height: '100%' }}>
-                                    <TextLayer pageNumber={page.originalIndex} scale={scale} />
-                                    <DrawLayer pageNumber={page.originalIndex} scale={scale} />
-                                    <ImageLayer pageNumber={page.originalIndex} scale={scale} />
-                                    <HandLayer scale={scale} />
+                                {/* Nested overlays to automatically scale and rotate with the page */}
+                                <div className="absolute inset-0 z-20 pointer-events-none">
+                                    <div style={{ pointerEvents: 'auto', width: '100%', height: '100%', position: 'relative' }}>
+                                        <TextLayer pageNumber={page.originalIndex} scale={scale} />
+                                        <DrawLayer pageNumber={page.originalIndex} scale={scale} />
+                                        <ImageLayer pageNumber={page.originalIndex} scale={scale} />
+                                        <HandLayer scale={scale} />
+                                    </div>
                                 </div>
-                            </div>
+                            </Page>
                         </div>
                     ))}
                 </Document>

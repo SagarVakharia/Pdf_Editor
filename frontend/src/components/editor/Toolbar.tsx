@@ -290,9 +290,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
 
                             try {
                                 const { pdfjs } = await import('react-pdf');
-                                if (!pdfjs.GlobalWorkerOptions.workerSrc || pdfjs.GlobalWorkerOptions.workerSrc.indexOf('cdn') === -1) {
-                                    pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-                                }
+                                pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
                                 const loadingTask = pdfjs.getDocument(pdfUrl);
                                 const doc = await loadingTask.promise;
@@ -355,7 +353,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                                     const y = viewport.height - pdfY - fontSize;
 
                                     const width = (last.transform[4] + (last.width || 0)) - first.transform[4];
-                                    // const height = fontSize * 1.2; 
+                                    const height = fontSize * 1.25;
 
                                     return {
                                         id: nanoid(),
@@ -370,12 +368,26 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                                         minWidth: width,
                                         isExtracted: true,
                                         fontFamily: 'Arial', // Default font
-                                        textAlign: 'left'
+                                        textAlign: 'left',
+                                        maskX: x,
+                                        maskY: y,
+                                        maskWidth: width,
+                                        maskHeight: height
                                     };
                                 }).filter(a => a.content.trim().length > 0);
 
+                                // Clean up existing extracted annotations for this page first to avoid duplicates
+                                const existingExtractedIds = annotations
+                                    .filter(a => a.page === pageConfig.originalIndex && a.isExtracted)
+                                    .map(a => a.id);
+                                if (existingExtractedIds.length > 0) {
+                                    dispatch(removeAnnotations(existingExtractedIds));
+                                }
+
                                 dispatch(setAnnotations(newAnnotations));
                                 dispatch(togglePageExtraction(pageConfig.id));
+
+
 
                             } catch (error) {
                                 console.error("Failed to extract text:", error);

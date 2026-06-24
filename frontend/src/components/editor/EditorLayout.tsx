@@ -32,6 +32,9 @@ export const EditorLayout: React.FC = () => {
         input.onchange = (e) => {
             const file = (e.target as HTMLInputElement).files?.[0];
             if (file) {
+                if (pdfUrl && pdfUrl.startsWith('blob:')) {
+                    URL.revokeObjectURL(pdfUrl);
+                }
                 const url = URL.createObjectURL(file);
                 dispatch(setPdfUrl(url));
             }
@@ -52,7 +55,7 @@ export const EditorLayout: React.FC = () => {
                 {/* Center Canvas */}
                 <div className="flex-1 overflow-auto bg-[var(--background)] relative scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent p-8 flex justify-center">
                     <div className="w-full h-full max-w-6xl">
-                        <PDFViewer file={pdfUrl} scale={scale} />
+                        <PDFViewer file={pdfUrl} scale={scale} onUpload={handleUpload} />
                     </div>
                 </div>
 

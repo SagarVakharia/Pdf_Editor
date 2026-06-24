@@ -3,7 +3,7 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
-import { setActiveRightTab, removeAnnotation, updateAnnotationProperties } from '../../store/slices/canvasSlice';
+import { setActiveRightTab, deleteAnnotation, updateAnnotationProperties } from '../../store/slices/canvasSlice';
 import {
     Sliders, Layers, Trash2, FileText,
     AlignLeft, AlignCenter, AlignRight,
@@ -20,7 +20,7 @@ export const RightSidebar: React.FC = () => {
     } = useSelector((state: RootState) => state.canvas);
 
     const selectedAnnotation = selectedAnnotationId
-        ? annotations.find(a => a.id === selectedAnnotationId)
+        ? annotations.find(a => a.id === selectedAnnotationId && !a.isDeleted)
         : null;
 
     if (!sidebarRightOpen) return null;
@@ -225,10 +225,109 @@ export const RightSidebar: React.FC = () => {
                                 </div>
                             )}
 
+                            {/* Image Content */}
+                            {selectedAnnotation.type === 'image' && (
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-slate-400 block">Width (px)</label>
+                                        <div className="flex gap-3 items-center">
+                                            <input
+                                                type="range"
+                                                min="20"
+                                                max="600"
+                                                value={selectedAnnotation.size || 100}
+                                                onChange={(e) => handleChange('size', parseInt(e.target.value))}
+                                                className="flex-1 accent-indigo-500"
+                                            />
+                                            <input
+                                                type="number"
+                                                value={selectedAnnotation.size || 100}
+                                                onChange={(e) => handleChange('size', parseInt(e.target.value))}
+                                                className="w-16 bg-slate-800/50 border border-white/10 rounded-lg px-2 py-1 text-xs text-white text-center focus:outline-none focus:border-indigo-500"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-slate-400 block">Opacity</label>
+                                        <div className="flex gap-3 items-center">
+                                            <input
+                                                type="range"
+                                                min="0.1"
+                                                max="1.0"
+                                                step="0.05"
+                                                value={selectedAnnotation.opacity ?? 1.0}
+                                                onChange={(e) => handleChange('opacity', parseFloat(e.target.value))}
+                                                className="flex-1 accent-indigo-500"
+                                            />
+                                            <span className="text-xs font-semibold text-slate-300 w-10 text-center">
+                                                {Math.round((selectedAnnotation.opacity ?? 1.0) * 100)}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Drawing / Signing Content */}
+                            {(selectedAnnotation.type === 'draw' || selectedAnnotation.type === 'sign') && (
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-slate-400 block">Line Thickness</label>
+                                        <div className="flex gap-3 items-center">
+                                            <input
+                                                type="range"
+                                                min="1"
+                                                max="20"
+                                                value={selectedAnnotation.size || 2}
+                                                onChange={(e) => handleChange('size', parseInt(e.target.value))}
+                                                className="flex-1 accent-indigo-500"
+                                            />
+                                            <input
+                                                type="number"
+                                                value={selectedAnnotation.size || 2}
+                                                onChange={(e) => handleChange('size', parseInt(e.target.value))}
+                                                className="w-12 bg-slate-800/50 border border-white/10 rounded-lg px-2 py-1 text-xs text-white text-center focus:outline-none focus:border-indigo-500"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-slate-400 block">Stroke Color</label>
+                                        <div className="relative h-[38px] bg-slate-800/50 border border-white/10 rounded-lg p-1 flex items-center gap-2 px-2">
+                                            <input
+                                                type="color"
+                                                value={selectedAnnotation.color || '#000000'}
+                                                onChange={(e) => handleChange('color', e.target.value)}
+                                                className="w-full h-full opacity-0 absolute inset-0 cursor-pointer"
+                                            />
+                                            <div
+                                                className="w-full h-6 rounded bg-current border border-white/20"
+                                                style={{ backgroundColor: selectedAnnotation.color || '#000000' }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs text-slate-400 block">Opacity</label>
+                                        <div className="flex gap-3 items-center">
+                                            <input
+                                                type="range"
+                                                min="0.1"
+                                                max="1.0"
+                                                step="0.05"
+                                                value={selectedAnnotation.opacity ?? 1.0}
+                                                onChange={(e) => handleChange('opacity', parseFloat(e.target.value))}
+                                                className="flex-1 accent-indigo-500"
+                                            />
+                                            <span className="text-xs font-semibold text-slate-300 w-10 text-center">
+                                                {Math.round((selectedAnnotation.opacity ?? 1.0) * 100)}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Delete Button */}
                             <div className="pt-8 mt-auto">
                                 <button
-                                    onClick={() => dispatch(removeAnnotation(selectedAnnotation.id))}
+                                    onClick={() => dispatch(deleteAnnotation(selectedAnnotation.id))}
                                     className="w-full py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 rounded-xl flex items-center justify-center gap-2 font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
                                 >
                                     <Trash2 className="w-4 h-4" />
@@ -238,63 +337,66 @@ export const RightSidebar: React.FC = () => {
                         </div>
                     )
                 ) : (
-                    // Layers Tab Content
-                    <div className="space-y-4">
-                        {annotations.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full text-center text-slate-500 mt-10">
-                                <Layers className="w-12 h-12 mb-4 opacity-20" />
-                                <p className="text-sm font-medium">No Layers</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                {annotations.map((ann, i) => (
-                                    <div
-                                        key={ann.id}
-                                        onClick={() => {
-                                            if (selectedAnnotationId !== ann.id) {
-                                                dispatch(setActiveRightTab('properties'));
-                                            }
-                                        }} // Just select it, maybe?
-                                        className={`flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer group ${selectedAnnotationId === ann.id
-                                            ? 'bg-indigo-600/20 border-indigo-500/50'
-                                            : 'bg-[#1E293B]/50 border-white/5 hover:border-white/10'
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-xs font-mono text-slate-500 h-5 w-5 flex items-center justify-center rounded bg-slate-800/50">
-                                                {i + 1}
-                                            </span>
-                                            <div className="flex flex-col">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-medium text-slate-300 capitalize">
-                                                        {ann.type}
-                                                    </span>
-                                                    {ann.isExtracted && (
-                                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-medium">Extracted</span>
-                                                    )}
-                                                </div>
-                                                <span className="text-[10px] text-slate-500 truncated max-w-[120px]">
-                                                    {ann.content || 'No content'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                dispatch(removeAnnotation(ann.id));
-                                            }}
-                                            className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-white/5 rounded transition-colors opacity-0 group-hover:opacity-100"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                    (() => {
+                        const visibleAnnotations = annotations.filter(a => !a.isDeleted);
+                        return (
+                            <div className="space-y-4">
+                                {visibleAnnotations.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-full text-center text-slate-500 mt-10">
+                                        <Layers className="w-12 h-12 mb-4 opacity-20" />
+                                        <p className="text-sm font-medium">No Layers</p>
                                     </div>
-                                ))}
+                                ) : (
+                                    <div className="space-y-2">
+                                        {visibleAnnotations.map((ann, i) => (
+                                            <div
+                                                key={ann.id}
+                                                onClick={() => {
+                                                    if (selectedAnnotationId !== ann.id) {
+                                                        dispatch(setActiveRightTab('properties'));
+                                                    }
+                                                }}
+                                                className={`flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer group ${selectedAnnotationId === ann.id
+                                                    ? 'bg-indigo-600/20 border-indigo-500/50'
+                                                    : 'bg-[#1E293B]/50 border-white/5 hover:border-white/10'
+                                                    }`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-xs font-mono text-slate-500 h-5 w-5 flex items-center justify-center rounded bg-slate-800/50">
+                                                        {i + 1}
+                                                    </span>
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-medium text-slate-300 capitalize">
+                                                                {ann.type}
+                                                            </span>
+                                                            {ann.isExtracted && (
+                                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-medium">Extracted</span>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-[10px] text-slate-500 truncated max-w-[120px]">
+                                                            {ann.content || 'No content'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        dispatch(deleteAnnotation(ann.id));
+                                                    }}
+                                                    className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-white/5 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
+                        );
+                    })()
                 )}
             </div>
         </div>
     );
 };
-

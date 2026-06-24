@@ -12,6 +12,7 @@ interface Annotation {
     size?: number;
     opacity?: number;
     isExtracted?: boolean;
+    isDeleted?: boolean;
     fontFamily?: string;
     textAlign?: 'left' | 'center' | 'right';
     isBold?: boolean;
@@ -19,6 +20,10 @@ interface Annotation {
     backgroundColor?: string;
     minWidth?: number;
     minHeight?: number;
+    maskX?: number;
+    maskY?: number;
+    maskWidth?: number;
+    maskHeight?: number;
 }
 
 interface PageConfig {
@@ -130,6 +135,10 @@ export const canvasSlice = createSlice({
         },
         deletePage: (state, action: PayloadAction<string>) => {
             saveHistory(state);
+            const pageToDelete = state.pages.find(p => p.id === action.payload);
+            if (pageToDelete) {
+                state.annotations = state.annotations.filter(a => a.page !== pageToDelete.originalIndex);
+            }
             state.pages = state.pages.filter(p => p.id !== action.payload);
             if (state.pages.length > 0) {
                 if (state.currentPage > state.pages.length) {
@@ -185,6 +194,21 @@ export const canvasSlice = createSlice({
         removeAnnotation: (state, action: PayloadAction<string>) => {
             saveHistory(state);
             state.annotations = state.annotations.filter(a => a.id !== action.payload);
+        },
+        deleteAnnotation: (state, action: PayloadAction<string>) => {
+            saveHistory(state);
+            const ann = state.annotations.find(a => a.id === action.payload);
+            if (ann) {
+                if (ann.isExtracted && ann.maskX !== undefined) {
+                    ann.isDeleted = true;
+                    ann.content = '';
+                } else {
+                    state.annotations = state.annotations.filter(a => a.id !== action.payload);
+                }
+                if (state.selectedAnnotationId === action.payload) {
+                    state.selectedAnnotationId = null;
+                }
+            }
         },
         removeAnnotations: (state, action: PayloadAction<string[]>) => {
             saveHistory(state);
@@ -253,7 +277,7 @@ export const canvasSlice = createSlice({
 export const {
     setPdfUrl, setPage, setTotalPages, setScale, setTool,
     initPages, rotatePage, deletePage, reorderPages, movePage,
-    addAnnotation, updateAnnotation, removeAnnotation, setSelectedAnnotationId,
+    addAnnotation, updateAnnotation, removeAnnotation, deleteAnnotation, setSelectedAnnotationId,
     setSidebarLeftOpen, setSidebarRightOpen, setActiveSidebarTab, setActiveRightTab,
     updateAnnotationProperties, undo, redo, navigateToPage, togglePageExtraction, setAnnotations, removeAnnotations
 } = canvasSlice.actions;

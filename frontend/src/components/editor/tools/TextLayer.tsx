@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
-import { addAnnotation, updateAnnotation, setSelectedAnnotationId, removeAnnotation } from '../../../store/slices/canvasSlice';
+import { addAnnotation, updateAnnotation, setSelectedAnnotationId, deleteAnnotation, updateAnnotationProperties } from '../../../store/slices/canvasSlice';
 import { nanoid } from '@reduxjs/toolkit';
 
 interface TextLayerProps {
@@ -15,55 +15,138 @@ export const TextLayer: React.FC<TextLayerProps> = ({ pageNumber, scale }) => {
     const dispatch = useDispatch();
     const { tool, annotations, selectedAnnotationId } = useSelector((state: RootState) => state.canvas);
     const containerRef = useRef<HTMLDivElement>(null);
+    const [pageWidth, setPageWidth] = useState(595);
 
-    // Filter annotations for this page
+    // Keep page width updated
+    useEffect(() => {
+        const parent = containerRef.current?.parentElement;
+        if (parent) {
+            setPageWidth(parent.offsetWidth / scale);
+        }
+    }, [scale, annotations]);
+
     const pageAnnotations = annotations.filter(a => a.page === pageNumber && a.type === 'text');
+
+    const handleMouseDown = (e: React.MouseEvent, ann: typeof annotations[0]) => {
+        if (tool !== 'select') return;
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return; // Ignore drag actions when typing
+
+        e.stopPropagation();
+        e.preventDefault();
+        dispatch(setSelectedAnnotationId(ann.id));
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const initialX = ann.x;
+        const initialY = ann.y;
+
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+            const dx = (moveEvent.clientX - startX) / scale;
+            const dy = (moveEvent.clientY - startY) / scale;
+            dispatch(updateAnnotationProperties({
+                id: ann.id,
+                updates: {
+                    x: initialX + dx,
+                    y: initialY + dy
+                }
+            }));
+        };
+
+        const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    };
 
     return (
         <div
             ref={containerRef}
             className="absolute inset-0 z-10 pointer-events-none"
         >
-            {pageAnnotations.map((ann) => (
-                <div
-                    key={ann.id}
-                    className={`absolute border ${selectedAnnotationId === ann.id ? 'border-indigo-500' : 'border-transparent hover:border-indigo-300'}`}
-                    style={{
-                        left: ann.x * scale,
-                        top: ann.y * scale,
-                        fontSize: (ann.size || 16) * scale,
-                        color: ann.color,
-                        backgroundColor: ann.backgroundColor || 'transparent',
-                        pointerEvents: 'auto',
-                        lineHeight: 1,
-                        minWidth: ann.minWidth ? ann.minWidth * scale : 'auto',
-                        minHeight: ann.minHeight ? ann.minHeight * scale : 'auto',
-                        whiteSpace: 'nowrap',
-                        fontFamily: ann.fontFamily,
-                        fontWeight: ann.isBold ? 'bold' : 'normal',
-                        fontStyle: ann.isItalic ? 'italic' : 'normal',
-                    }}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        if (tool === 'erase') {
-                            dispatch(removeAnnotation(ann.id));
-                            return;
-                        }
-                        dispatch(setSelectedAnnotationId(ann.id));
-                    }}
-                >
-                    {selectedAnnotationId === ann.id ? (
-                        <input
-                            className="bg-transparent outline-none w-full min-w-[50px]"
-                            value={ann.content || ''}
-                            onChange={(e) => dispatch(updateAnnotation({ ...ann, content: e.target.value }))}
-                            autoFocus
-                        />
-                    ) : (
-                        <span>{ann.content || 'Empty'}</span>
-                    )}
-                </div>
-            ))}
+            {/* 1. Render White Mask at original coordinates (if defined), regardless of whether annotation is deleted or empty */}
+            {pageAnnotations.map((ann) => {
+                if (ann.maskX === undefined || ann.maskY === undefined) return null;
+                return (
+                    <div
+                        key={`mask-${ann.id}`}
+                        className="absolute bg-white pointer-events-none"
+                        style={{
+                            left: ann.maskX * scale,
+                            top: ann.maskY * scale,
+                            width: (ann.maskWidth || 0) * scale,
+                            height: (ann.maskHeight || 0) * scale,
+                            zIndex: 1
+                        }}
+                    />
+                );
+            })}
+
+            {/* 2. Render actual text overlay (only if not deleted) */}
+            {pageAnnotations.filter(ann => !ann.isDeleted).map((ann) => {
+                const maxW = Math.max(100, pageWidth - ann.x);
+                return (
+                    <div
+                        key={ann.id}
+                        className={`absolute border ${selectedAnnotationId === ann.id ? 'border-indigo-500 bg-slate-900/10' : 'border-transparent hover:border-indigo-300'} ${tool === 'select' ? 'cursor-move' : ''}`}
+                        style={{
+                            left: ann.x * scale,
+                            top: ann.y * scale,
+                            fontSize: (ann.size || 16) * scale,
+                            color: ann.color,
+                            backgroundColor: ann.backgroundColor || 'transparent',
+                            pointerEvents: (tool === 'select' || tool === 'text' || tool === 'erase') ? 'auto' : 'none',
+                            lineHeight: 1.2,
+                            minWidth: ann.minWidth ? ann.minWidth * scale : 'auto',
+                            minHeight: ann.minHeight ? ann.minHeight * scale : 'auto',
+                            maxWidth: maxW * scale,
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            fontFamily: ann.fontFamily,
+                            fontWeight: ann.isBold ? 'bold' : 'normal',
+                            fontStyle: ann.isItalic ? 'italic' : 'normal',
+                            textAlign: ann.textAlign || 'left',
+                            padding: '2px',
+                            zIndex: 10
+                        }}
+                        onMouseDown={(e) => handleMouseDown(e, ann)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (tool === 'erase') {
+                                dispatch(deleteAnnotation(ann.id));
+                                return;
+                            }
+                            if (tool === 'text' || tool === 'select') {
+                                dispatch(setSelectedAnnotationId(ann.id));
+                            }
+                        }}
+                    >
+                        {selectedAnnotationId === ann.id ? (
+                            <textarea
+                                className="bg-transparent outline-none w-full border-0 p-0 m-0 resize-none overflow-hidden"
+                                value={ann.content || ''}
+                                onChange={(e) => dispatch(updateAnnotation({ ...ann, content: e.target.value }))}
+                                autoFocus
+                                style={{
+                                    fontFamily: 'inherit',
+                                    fontSize: 'inherit',
+                                    fontWeight: 'inherit',
+                                    fontStyle: 'inherit',
+                                    color: 'inherit',
+                                    lineHeight: 'inherit',
+                                    textAlign: 'inherit',
+                                    minHeight: '1.2em'
+                                }}
+                            />
+                        ) : (
+                            <span style={{ display: 'block', width: '100%' }}>{ann.content || 'Empty'}</span>
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 };

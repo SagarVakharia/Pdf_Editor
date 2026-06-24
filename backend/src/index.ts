@@ -11,7 +11,10 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(helmet());
-app.use(cors()); // Configure origin in production
+app.use(cors({
+    origin: process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL || '*' : 'http://localhost:3000',
+    optionsSuccessStatus: 200
+}));
 app.use(express.json());
 
 // Routes
@@ -21,6 +24,29 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok' });
+});
+
+app.get('/api/proxy', async (req, res) => {
+    const url = req.query.url as string;
+    if (!url) {
+        res.status(400).send('URL is required');
+        return;
+    }
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            res.status(response.status).send(`Failed to fetch URL: ${response.statusText}`);
+            return;
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        
+        res.setHeader('Content-Type', response.headers.get('Content-Type') || 'application/pdf');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.send(buffer);
+    } catch (error) {
+        res.status(500).send(`Proxy error: ${error instanceof Error ? error.message : String(error)}`);
+    }
 });
 
 // Serve uploaded files (if any)

@@ -3,7 +3,7 @@
 import React, { useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
-import { addAnnotation, setSelectedAnnotationId, setTool, removeAnnotation } from '../../../store/slices/canvasSlice';
+import { addAnnotation, setSelectedAnnotationId, setTool, deleteAnnotation, updateAnnotationProperties } from '../../../store/slices/canvasSlice';
 import { nanoid } from '@reduxjs/toolkit';
 
 interface ImageLayerProps {
@@ -17,6 +17,38 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, scale }) => 
 
     // Filter image annotations
     const pageAnnotations = annotations.filter(a => a.page === pageNumber && a.type === 'image');
+
+    const handleMouseDown = (e: React.MouseEvent, ann: typeof annotations[0]) => {
+        if (tool !== 'select') return;
+        e.stopPropagation();
+        e.preventDefault();
+        dispatch(setSelectedAnnotationId(ann.id));
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const initialX = ann.x;
+        const initialY = ann.y;
+
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+            const dx = (moveEvent.clientX - startX) / scale;
+            const dy = (moveEvent.clientY - startY) / scale;
+            dispatch(updateAnnotationProperties({
+                id: ann.id,
+                updates: {
+                    x: initialX + dx,
+                    y: initialY + dy
+                }
+            }));
+        };
+
+        const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    };
 
     const handleUpload = (x: number, y: number) => {
         const input = document.createElement('input');
@@ -72,18 +104,19 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, scale }) => 
             {pageAnnotations.map(ann => (
                 <div
                     key={ann.id}
-                    className={`absolute border ${selectedAnnotationId === ann.id ? 'border-indigo-500' : 'border-transparent'}`}
+                    className={`absolute border ${selectedAnnotationId === ann.id ? 'border-indigo-500' : 'border-transparent'} ${tool === 'select' ? 'cursor-move' : ''}`}
                     style={{
                         left: ann.x * scale,
                         top: ann.y * scale,
                         width: (ann.size || 100) * scale,
                         opacity: ann.opacity ?? 1,
-                        pointerEvents: 'auto'
+                        pointerEvents: (tool === 'select' || tool === 'image' || tool === 'erase') ? 'auto' : 'none'
                     }}
+                    onMouseDown={(e) => handleMouseDown(e, ann)}
                     onClick={(e) => {
                         e.stopPropagation();
                         if (tool === 'erase') {
-                            dispatch(removeAnnotation(ann.id));
+                            dispatch(deleteAnnotation(ann.id));
                             return;
                         }
                         dispatch(setSelectedAnnotationId(ann.id));

@@ -16,6 +16,37 @@ const sanitizeText = (text: string) => {
     });
 };
 
+// Wrap text to stay within the max allowed width, preserving paragraph newlines (\n)
+const wrapText = (text: string, maxWidth: number, fontSize: number, font: any) => {
+    const paragraphs = text.split('\n');
+    const lines: string[] = [];
+
+    for (const paragraph of paragraphs) {
+        if (!paragraph.trim()) {
+            lines.push('');
+            continue;
+        }
+        const words = paragraph.split(' ');
+        let currentLine = '';
+
+        for (const word of words) {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            const testWidth = font.widthOfTextAtSize(sanitizeText(testLine), fontSize);
+
+            if (testWidth > maxWidth && currentLine) {
+                lines.push(currentLine);
+                currentLine = word;
+            } else {
+                currentLine = testLine;
+            }
+        }
+        if (currentLine) {
+            lines.push(currentLine);
+        }
+    }
+    return lines;
+};
+
 interface PageConfig {
     id: string;
     originalIndex: number;
@@ -39,7 +70,48 @@ interface Annotation {
     isBold?: boolean;
     isItalic?: boolean;
     fontFamily?: string;
+    isDeleted?: boolean;
+    maskX?: number;
+    maskY?: number;
+    maskWidth?: number;
+    maskHeight?: number;
 }
+
+// Convert top-left based editor coordinate space to bottom-left based PDF coordinate space,
+// correctly translating positions on pages rotated by 0, 90, 180, or 270 degrees.
+const getRotatedCoordinates = (
+    x: number,
+    y: number,
+    w: number, // original page width
+    h: number, // original page height
+    rotation: number, // pageConfig.rotation (0, 90, 180, 270)
+    boxWidth: number = 0,
+    boxHeight: number = 0
+) => {
+    switch (rotation) {
+        case 90:
+            return {
+                x: y,
+                y: x
+            };
+        case 180:
+            return {
+                x: w - x - boxWidth,
+                y: y
+            };
+        case 270:
+            return {
+                x: w - y - boxWidth,
+                y: h - x - boxHeight
+            };
+        case 0:
+        default:
+            return {
+                x: x,
+                y: h - y - boxHeight
+            };
+    }
+};
 
 export const generatePDF = async (
     pdfUrl: string,
@@ -52,7 +124,6 @@ export const generatePDF = async (
 
     try {
         // Fetch current PDF
-        // Fetch current PDF
         let existingPdfBytes;
         try {
             const res = await fetch(pdfUrl);
@@ -62,7 +133,6 @@ export const generatePDF = async (
             throw new Error(`Error fetching PDF from URL: ${e instanceof Error ? e.message : String(e)}`);
         }
 
-        // Load into pdf-lib
         // Load into pdf-lib
         let pdfDoc;
         try {
@@ -75,10 +145,8 @@ export const generatePDF = async (
         const newPdfDoc = await PDFDocument.create();
 
         // 1. Process Pages (Reordering & Rotation)
-        // We need to copy pages from original doc to new doc in the specific order
         try {
             const pageIndices = pages.map(p => p.originalIndex - 1);
-            // newPdfDoc.copyPages expects an array of indices. Ensure they are valid.
             const totalOriginal = pdfDoc.getPageCount();
             if (pageIndices.some(i => i < 0 || i >= totalOriginal)) {
                 throw new Error(`Invalid page index found. Document has ${totalOriginal} pages.`);
@@ -101,10 +169,6 @@ export const generatePDF = async (
         }
 
         // 2. Apply Annotations
-        // We need to map annotations to the NEW pages in newPdfDoc.
-        // The annotation.page property refers to the 1-based index in the VIRTUAL document (our UI).
-
-        // Group annotations by page
         const annotationsByPage: { [key: number]: Annotation[] } = {};
         annotations.forEach(a => {
             if (!annotationsByPage[a.page]) annotationsByPage[a.page] = [];
@@ -118,14 +182,13 @@ export const generatePDF = async (
         const newPages = newPdfDoc.getPages();
 
         for (let i = 0; i < newPages.length; i++) {
-            const pageIndex = i + 1; // 1-based index matching annotation.page
-            const pageAnnotations = annotationsByPage[pageIndex] || [];
+            const pageConfig = pages[i];
+            const originalIndex = pageConfig.originalIndex;
+            const pageAnnotations = annotationsByPage[originalIndex] || [];
             const page = newPages[i];
             const { width, height } = page.getSize();
-
-            // Note: coordinates in PDF are usually bottom-left origin.
-            // But our UI (HTML/CSS) is top-left origin.
-            // We need to flip Y.
+            const pageRot = pageConfig.rotation;
+            const annotationRot = (360 - pageRot) % 360;
 
             for (const annotation of pageAnnotations) {
                 // Parse color
@@ -136,66 +199,97 @@ export const generatePDF = async (
                 const pdfColor = rgb(r, g, b);
                 const opacity = annotation.opacity ?? 1;
 
-                if (annotation.type === 'text' && annotation.content) {
-                    const fontSize = annotation.size || 16;
-
-                    // Select Font
-                    let font = helveticaFont;
-                    if (annotation.isBold && annotation.isItalic) font = await newPdfDoc.embedFont(StandardFonts.HelveticaBoldOblique);
-                    else if (annotation.isBold) font = await newPdfDoc.embedFont(StandardFonts.HelveticaBold);
-                    else if (annotation.isItalic) font = await newPdfDoc.embedFont(StandardFonts.HelveticaOblique);
-
-                    // Calculate Dimensions
-                    const textWidth = font.widthOfTextAtSize(sanitizeText(annotation.content), fontSize);
-                    const boxWidth = Math.max(textWidth, annotation.minWidth || 0);
-                    const boxHeight = Math.max(fontSize, annotation.minHeight || 0);
-
-                    // Draw Background (Masking)
-                    if (annotation.backgroundColor) {
-                        const bgColorHex = annotation.backgroundColor;
-                        const bgR = parseInt(bgColorHex.slice(1, 3), 16) / 255;
-                        const bgG = parseInt(bgColorHex.slice(3, 5), 16) / 255;
-                        const bgB = parseInt(bgColorHex.slice(5, 7), 16) / 255;
+                if (annotation.type === 'text') {
+                    // 1. Draw Mask (Masking original text position) if defined, regardless of deletion/empty state
+                    if (annotation.maskX !== undefined && annotation.maskY !== undefined) {
+                        const maskW = annotation.maskWidth || 0;
+                        const maskH = annotation.maskHeight || 0;
+                        const maskCoords = getRotatedCoordinates(annotation.maskX, annotation.maskY, width, height, pageRot, maskW, maskH);
 
                         page.drawRectangle({
-                            x: annotation.x,
-                            y: height - annotation.y - boxHeight,
-                            width: boxWidth,
-                            height: boxHeight,
-                            color: rgb(bgR, bgG, bgB),
-                            opacity: 1 // Background should be opaque to hide original text
+                            x: maskCoords.x,
+                            y: maskCoords.y,
+                            width: maskW,
+                            height: maskH,
+                            color: rgb(1, 1, 1), // White
+                            opacity: 1,
+                            rotate: degrees(annotationRot)
                         });
                     }
 
-                    // Draw Text
-                    page.drawText(sanitizeText(annotation.content), {
-                        x: annotation.x,
-                        y: height - annotation.y - fontSize + (fontSize * 0.15), // Slight vertical adjustment to center in box approx
-                        size: fontSize,
-                        font: font,
-                        color: pdfColor,
-                        opacity: opacity
-                    });
+                    // 2. Render actual text if not deleted and has content
+                    if (!annotation.isDeleted && annotation.content) {
+                        const fontSize = annotation.size || 16;
+
+                        // Select Font
+                        let font = helveticaFont;
+                        if (annotation.isBold && annotation.isItalic) font = await newPdfDoc.embedFont(StandardFonts.HelveticaBoldOblique);
+                        else if (annotation.isBold) font = await newPdfDoc.embedFont(StandardFonts.HelveticaBold);
+                        else if (annotation.isItalic) font = await newPdfDoc.embedFont(StandardFonts.HelveticaOblique);
+
+                        // Compute maximum available width to prevent text from overflowing off the page
+                        const availableWidth = Math.max(100, annotation.minWidth || (width - annotation.x));
+
+                        // Wrap text into multiple lines
+                        const lines = wrapText(annotation.content, availableWidth, fontSize, font);
+                        const lineHeight = fontSize * 1.2;
+                        const totalBoxHeight = Math.max(lines.length * lineHeight, annotation.minHeight || 0);
+
+                        // Draw Background (Opaque background if customized by user)
+                        if (annotation.backgroundColor && annotation.backgroundColor !== 'transparent') {
+                            const bgColorHex = annotation.backgroundColor;
+                            const bgR = parseInt(bgColorHex.slice(1, 3), 16) / 255;
+                            const bgG = parseInt(bgColorHex.slice(3, 5), 16) / 255;
+                            const bgB = parseInt(bgColorHex.slice(5, 7), 16) / 255;
+
+                            // Calculate translated coordinates for the background box
+                            const boxCoords = getRotatedCoordinates(annotation.x, annotation.y, width, height, pageRot, availableWidth, totalBoxHeight);
+
+                            page.drawRectangle({
+                                x: boxCoords.x,
+                                y: boxCoords.y,
+                                width: availableWidth,
+                                height: totalBoxHeight,
+                                color: rgb(bgR, bgG, bgB),
+                                opacity: 1,
+                                rotate: degrees(annotationRot)
+                            });
+                        }
+
+                        // Draw each line of text
+                        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+                            const lineText = lines[lineIndex];
+                            if (lineText === undefined) continue;
+
+                            const lineSpacing = lineIndex * lineHeight;
+                            
+                            // Pass screen coordinates of the current line to get translated unrotated coordinates
+                            const lineCoords = getRotatedCoordinates(annotation.x, annotation.y + lineSpacing, width, height, pageRot, availableWidth, fontSize);
+
+                            page.drawText(sanitizeText(lineText), {
+                                x: lineCoords.x,
+                                y: lineCoords.y + (fontSize * 0.15), // Offset slightly to align with baseline
+                                size: fontSize,
+                                font: font,
+                                color: pdfColor,
+                                opacity: opacity,
+                                rotate: degrees(annotationRot)
+                            });
+                        }
+                    }
                 }
                 else if (annotation.type === 'draw' && annotation.path && annotation.path.length > 1) {
                     const thickness = annotation.size || 2;
-                    // Draw path as SVG path or line segments
-                    // pdf-lib supports drawSvgPath or move/line
-                    // Let's construct a path string or draw lines
-
                     const pathData = annotation.path;
-                    // Optimization: handle as SVG path
-                    // M x0 y0 L x1 y1 ...
-                    // Remember to flip Y for every point
 
-                    let svgPath = `M ${pathData[0].x} ${height - pathData[0].y}`;
+                    // Map every point of the drawing path to unrotated page space
+                    const firstPt = getRotatedCoordinates(pathData[0].x, pathData[0].y, width, height, pageRot);
+                    let svgPath = `M ${firstPt.x} ${firstPt.y}`;
                     for (let k = 1; k < pathData.length; k++) {
-                        svgPath += ` L ${pathData[k].x} ${height - pathData[k].y}`;
+                        const pt = getRotatedCoordinates(pathData[k].x, pathData[k].y, width, height, pageRot);
+                        svgPath += ` L ${pt.x} ${pt.y}`;
                     }
 
-                    // To simulate opacity with lines, we might need a separate approach or just accept it.
-                    // drawSvgPath doesn't always support opacity in all versions appropriately or standard stroke.
-                    // Actually page.drawSvgPath is good.
                     page.drawSvgPath(svgPath, {
                         borderColor: pdfColor,
                         borderWidth: thickness,
@@ -204,46 +298,41 @@ export const generatePDF = async (
                 }
                 else if (annotation.type === 'image' && annotation.content) {
                     try {
-                        const imageBytes = await fetch(annotation.content).then(res => res.arrayBuffer());
+                        let imageBytes: ArrayBuffer;
+                        if (annotation.content.startsWith('data:')) {
+                            // Decode base64 data URLs directly
+                            const base64Data = annotation.content.split(',')[1];
+                            const binaryString = atob(base64Data);
+                            const bytes = new Uint8Array(binaryString.length);
+                            for (let k = 0; k < binaryString.length; k++) {
+                                bytes[k] = binaryString.charCodeAt(k);
+                            }
+                            imageBytes = bytes.buffer;
+                        } else {
+                            imageBytes = await fetch(annotation.content).then(res => res.arrayBuffer());
+                        }
 
                         let image;
-                        // naive check for png/jpg based on url or header
-                        // For data URLs, we can guess
-                        if (annotation.content.startsWith('data:image/png')) {
+                        if (annotation.content.startsWith('data:image/png') || annotation.content.endsWith('.png')) {
                             image = await newPdfDoc.embedPng(imageBytes);
                         } else {
-                            // try jpg fallack
                             image = await newPdfDoc.embedJpg(imageBytes).catch(() => newPdfDoc.embedPng(imageBytes).catch(() => null));
                         }
 
                         if (image) {
-                            const dims = image.scale(1); // or use annotation w/h if we stored it
-                            // We need to know the width/height the user resized it to.
-                            // The Annotation interface in my previous read didn't show width/height for image explicitly 
-                            // other than "size". If "size" is width, we scale proportionally.
-                            // Let's assume simple scaling for now or native size if not specified.
-
-                            // If we don't have explicit width/height in annotation, we might have an issue 
-                            // replicating exact size. The "size" prop in Interface might be text size or stroke width.
-                            // Let's assume for image, we might need to add width/height to annotation model 
-                            // or use a fixed scale.
-                            // For now, let's draw it native size or limit it.
-
-                            // FIX: The current annotation model in canvasSlice.ts doesn't seem to have width/height for images explicitly.
-                            // It has `size`. Let's treat `size` as width (pixels) if present, else 100?
-                            // Or maybe the user cannot resize images yet?
-                            // Checking Drawing tool... usually just text/draw.
-
-                            // Let's draw it at X,Y
-                            const imgWidth = annotation.size ? annotation.size * 10 : dims.width; // rough guess if size is small number
+                            const dims = image.scale(1);
+                            const imgWidth = annotation.size ? annotation.size : dims.width;
                             const imgHeight = (imgWidth / dims.width) * dims.height;
 
+                            const coords = getRotatedCoordinates(annotation.x, annotation.y, width, height, pageRot, imgWidth, imgHeight);
+
                             page.drawImage(image, {
-                                x: annotation.x,
-                                y: height - annotation.y - imgHeight, // Top-left anchor simulation
+                                x: coords.x,
+                                y: coords.y,
                                 width: imgWidth,
                                 height: imgHeight,
-                                opacity: opacity
+                                opacity: opacity,
+                                rotate: degrees(annotationRot)
                             });
                         }
                     } catch (e) {
