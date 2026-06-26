@@ -82,7 +82,7 @@ export const SortablePageItem: React.FC<SortablePageItemProps> = ({
                     <div
                         {...attributes}
                         {...listeners}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded cursor-grab active:cursor-grabbing text-text-muted hover:text-text-main"
+                        className="p-1 hover:bg-surface dark:hover:bg-sidebar/10 rounded cursor-grab active:cursor-grabbing text-text-muted hover:text-text-main"
                         title="Drag to reorder"
                     >
                         <GripVertical className="w-4 h-4" />
@@ -91,13 +91,13 @@ export const SortablePageItem: React.FC<SortablePageItemProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={handleMoveUp} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded text-text-muted hover:text-text-main" title="Move Up">
+                    <button onClick={handleMoveUp} className="p-1 hover:bg-surface dark:hover:bg-sidebar/10 rounded text-text-muted hover:text-text-main" title="Move Up">
                         <ChevronUp className="w-3 h-3" />
                     </button>
-                    <button onClick={handleMoveDown} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded text-text-muted hover:text-text-main" title="Move Down">
+                    <button onClick={handleMoveDown} className="p-1 hover:bg-surface dark:hover:bg-sidebar/10 rounded text-text-muted hover:text-text-main" title="Move Down">
                         <ChevronDown className="w-3 h-3" />
                     </button>
-                    <button onClick={handleRotate} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded text-text-muted hover:text-text-main" title="Rotate">
+                    <button onClick={handleRotate} className="p-1 hover:bg-surface dark:hover:bg-sidebar/10 rounded text-text-muted hover:text-text-main" title="Rotate">
                         <RotateCw className="w-3 h-3" />
                     </button>
                     <button onClick={handleDelete} className="p-1 hover:bg-rose-500/20 rounded text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300" title="Delete">
@@ -107,9 +107,9 @@ export const SortablePageItem: React.FC<SortablePageItemProps> = ({
             </div>
 
             {/* Thumbnail */}
-            <div className="aspect-[3/4] bg-white rounded flex items-center justify-center relative overflow-hidden">
+            <div className="aspect-[3/4] bg-sidebar rounded flex items-center justify-center relative overflow-hidden">
                 {page.isExtracted && (
-                    <div className="absolute top-2 right-2 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm z-10 font-medium pointer-events-none">
+                    <div className="absolute top-2 right-2 bg-green-500 text-text-main text-[10px] px-1.5 py-0.5 rounded shadow-sm z-10 font-medium pointer-events-none">
                         Extracted
                     </div>
                 )}
@@ -120,7 +120,7 @@ export const SortablePageItem: React.FC<SortablePageItemProps> = ({
                             pageNumber={page.originalIndex}
                             width={120} // Approximate sidebar width
                             scale={0.5} // Scale down further to improve performance? No, width handles CSS size.
-                            loading={<div className="text-xs text-slate-400">Loading...</div>}
+                            loading={<div className="text-xs text-text-muted">Loading...</div>}
                             renderTextLayer={false}
                             renderAnnotationLayer={false}
                             className="shadow-sm"

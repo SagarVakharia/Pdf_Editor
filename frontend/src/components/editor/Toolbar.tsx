@@ -171,8 +171,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                     }}
                     className={`p-2 md:p-2.5 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md ${
                         isActive
-                            ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/50 scale-105'
-                            : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800/80'
+                            ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-text-main shadow-lg shadow-indigo-500/50 scale-105'
+                            : 'text-text-muted hover:text-text-main hover:bg-surface'
                     }`}
                     title={title}
                 >
@@ -225,7 +225,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                         </div>
                         <button
                             onClick={handleDownload}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-all active:scale-95 shadow-md shadow-indigo-500/20"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-text-main rounded-lg font-medium transition-all active:scale-95 shadow-md shadow-indigo-500/20"
                         >
                             <Save className="w-4 h-4" />
                             Download
@@ -240,7 +240,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => dispatch(setSidebarLeftOpen(!sidebarLeftOpen))}
-                        className="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-all active:scale-95"
+                        className="p-2 rounded-lg text-text-muted hover:text-text-main hover:bg-surface transition-all active:scale-95"
                         title="Toggle Page Navigation"
                     >
                         {sidebarLeftOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
@@ -275,8 +275,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                             onClick={() => setShapeDropdownOpen(!shapeDropdownOpen)}
                             className={`p-2 md:p-2.5 rounded-lg flex items-center justify-center gap-0.5 transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md ${
                                 ['line','arrow','rectangle','circle','triangle','star','diamond','shape'].includes(activeTool)
-                                    ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/50 scale-105'
-                                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800/80'
+                                    ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-text-main shadow-lg shadow-indigo-500/50 scale-105'
+                                    : 'text-text-muted hover:text-text-main hover:bg-surface'
                             }`}
                             title="Shapes"
                         >
@@ -307,7 +307,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
 
                         {shapeDropdownOpen && (
                             <div className="absolute top-12 left-0 z-50 rounded-xl shadow-2xl py-2 w-52 animate-in fade-in slide-in-from-top-2 duration-150" style={{ background: 'var(--color-sidebar, #fff)', border: '1px solid var(--color-border, #e5e7eb)' }}>
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-3 pb-1 pt-1">Shapes</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted px-3 pb-1 pt-1">Shapes</p>
                                 {[
                                     { type: 'rectangle', label: 'Rectangle', icon: <rect width="14" height="10" x="5" y="7" rx="1"/> },
                                     { type: 'circle', label: 'Circle / Ellipse', icon: <circle cx="12" cy="12" r="7"/> },
@@ -322,16 +322,16 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                                             dispatch(setTool('shape'));
                                             setShapeDropdownOpen(false);
                                         }}
-                                        className={`w-full px-3 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
-                                            activeShapeType === type && ['shape','rectangle','circle','triangle','star','diamond'].includes(activeTool) ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-200'
+                                        className={`w-full px-3 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-surface transition-colors ${
+                                            activeShapeType === type && ['shape','rectangle','circle','triangle','star','diamond'].includes(activeTool) ? 'text-indigo-600 dark:text-indigo-400' : 'text-text-main'
                                         }`}
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icon}</svg>
                                         {label}
                                     </button>
                                 ))}
-                                <div className="border-t border-gray-200 dark:border-gray-700 my-1"/>
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-3 pb-1">Lines</p>
+                                <div className="border-t border-border my-1"/>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted px-3 pb-1">Lines</p>
                                 {[
                                     { type: 'line', label: 'Straight Line', icon: <line x1="4" y1="20" x2="20" y2="4"/> },
                                     { type: 'arrow', label: 'Arrow', icon: <><line x1="4" y1="20" x2="20" y2="4"/><polyline points="14 4 20 4 20 10"/></> },
@@ -343,8 +343,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                                             dispatch(setTool('shape'));
                                             setShapeDropdownOpen(false);
                                         }}
-                                        className={`w-full px-3 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
-                                            activeShapeType === type && ['shape','line','arrow'].includes(activeTool) ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-200'
+                                        className={`w-full px-3 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-surface transition-colors ${
+                                            activeShapeType === type && ['shape','line','arrow'].includes(activeTool) ? 'text-indigo-600 dark:text-indigo-400' : 'text-text-main'
                                         }`}
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icon}</svg>
@@ -370,7 +370,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                                     <button
                                         key={idx}
                                         onClick={() => handleStampSelect(stamp)}
-                                        className="w-full px-4 py-2 text-left text-sm font-semibold hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center gap-2"
+                                        className="w-full px-4 py-2 text-left text-sm font-semibold hover:bg-surface transition-colors flex items-center gap-2"
                                         style={{ color: stamp.color }}
                                     >
                                         <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stamp.color }} />
@@ -397,14 +397,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                 {/* Right Side Actions: Undo/Redo, Open, Save, Cog, Switcher, Panel */}
                 <div className="flex items-center gap-1.5 md:gap-2.5">
                     {/* Undo/Redo */}
-                    <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 border border-border">
+                    <div className="flex bg-surface rounded-lg p-0.5 border border-border">
                         <button
                             onClick={() => dispatch(undo())}
                             disabled={!canUndo}
                             className={`p-1.5 rounded-md transition-colors ${
                                 canUndo
-                                    ? 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-white dark:hover:bg-gray-700/50'
-                                    : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                                    ? 'text-text-muted hover:text-text-main hover:bg-sidebar dark:hover:bg-gray-700/50'
+                                    : 'text-text-muted opacity-50 cursor-not-allowed'
                             }`}
                             title="Undo (Ctrl+Z)"
                         >
@@ -415,8 +415,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                             disabled={!canRedo}
                             className={`p-1.5 rounded-md transition-colors ${
                                 canRedo
-                                    ? 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-white dark:hover:bg-gray-700/50'
-                                    : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                                    ? 'text-text-muted hover:text-text-main hover:bg-sidebar dark:hover:bg-gray-700/50'
+                                    : 'text-text-muted opacity-50 cursor-not-allowed'
                             }`}
                             title="Redo (Ctrl+Y)"
                         >
@@ -427,7 +427,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                     {/* Open Button */}
                     <button
                         onClick={onUpload}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 rounded-lg text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-700/80 shadow-sm border border-border text-gray-700 dark:text-gray-200 hover:scale-105 active:scale-95 transition-all duration-200"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-sidebar rounded-lg text-sm font-semibold hover:bg-surface shadow-sm border border-border text-text-main hover:scale-105 active:scale-95 transition-all duration-200"
                     >
                         <FolderOpen className="w-4 h-4 text-indigo-500" />
                         <span className="hidden sm:inline">Open</span>
@@ -437,10 +437,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                     <button
                         onClick={() => pdfUrl && setShowDownloadDialog(true)}
                         disabled={!pdfUrl}
-                        className={`flex items-center gap-1.5 px-4.5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 text-white select-none ${
+                        className={`flex items-center gap-1.5 px-4.5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 text-text-main select-none ${
                             pdfUrl
                                 ? 'bg-gradient-to-br from-indigo-500 to-purple-600 hover:scale-105 active:scale-95 shadow-md shadow-indigo-500/20 cursor-pointer'
-                                : 'bg-gray-300 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border border-border cursor-not-allowed'
+                                : 'bg-surface opacity-50 text-text-muted opacity-50 border border-border cursor-not-allowed'
                         }`}
                         title="Save PDF"
                     >
@@ -450,7 +450,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
 
                     {/* Settings Cog */}
                     <button
-                        className="p-2 rounded-full text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-all hover:rotate-180 duration-500 active:scale-95"
+                        className="p-2 rounded-full text-text-muted hover:text-text-main hover:bg-surface transition-all hover:rotate-180 duration-500 active:scale-95"
                         title="Settings"
                     >
                         <Settings className="w-5 h-5" />
@@ -459,7 +459,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                     {/* Theme Switcher */}
                     <button
                         onClick={() => dispatch(toggleTheme())}
-                        className="p-2 rounded-full text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-all active:scale-95"
+                        className="p-2 rounded-full text-text-muted hover:text-text-main hover:bg-surface transition-all active:scale-95"
                         title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
                     >
                         {theme === 'light' ? <Moon className="w-5 h-5 text-indigo-500" /> : <Sun className="w-5 h-5 text-yellow-500" />}
@@ -468,7 +468,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                     {/* Right Panel Toggle */}
                     <button
                         onClick={() => dispatch(setSidebarRightOpen(!sidebarRightOpen))}
-                        className="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-all active:scale-95"
+                        className="p-2 rounded-lg text-text-muted hover:text-text-main hover:bg-surface transition-all active:scale-95"
                         title="Toggle Properties Panel"
                     >
                         {sidebarRightOpen ? <PanelRightClose className="w-5 h-5" /> : <PanelRightOpen className="w-5 h-5" />}
@@ -479,11 +479,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
             {/* Sub-header / Controls Bar */}
             <div className="h-12 bg-sidebar border-t border-border flex items-center justify-between px-4 relative">
                 {/* Left: Page Navigation */}
-                <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg p-0.5 border border-border shadow-sm">
+                <div className="flex items-center gap-2 bg-sidebar rounded-lg p-0.5 border border-border shadow-sm">
                     <button
                         onClick={() => dispatch(navigateToPage(Math.max(1, currentPage - 1)))}
                         disabled={currentPage <= 1}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="p-1 hover:bg-surface rounded transition-colors text-text-muted disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                         <ChevronLeft className="w-4 h-4" />
                     </button>
@@ -493,17 +493,17 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                     <button
                         onClick={() => dispatch(navigateToPage(Math.min(totalPages, currentPage + 1)))}
                         disabled={currentPage >= totalPages}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="p-1 hover:bg-surface rounded transition-colors text-text-muted disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                         <ChevronRight className="w-4 h-4" />
                     </button>
                 </div>
 
                 {/* Center: Zoom */}
-                <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg p-0.5 border border-border shadow-sm">
+                <div className="flex items-center gap-2 bg-sidebar rounded-lg p-0.5 border border-border shadow-sm">
                     <button
                         onClick={() => dispatch(setScale(Math.max(0.2, scale - 0.1)))}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-gray-500"
+                        className="p-1 hover:bg-surface rounded transition-colors text-text-muted"
                     >
                         <ZoomOut className="w-4 h-4" />
                     </button>
@@ -512,7 +512,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                     </span>
                     <button
                         onClick={() => dispatch(setScale(Math.min(3.0, scale + 0.1)))}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-gray-500"
+                        className="p-1 hover:bg-surface rounded transition-colors text-text-muted"
                     >
                         <ZoomIn className="w-4 h-4" />
                     </button>
@@ -635,7 +635,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all text-xs font-semibold uppercase tracking-wider ${
                             pages[currentPage - 1]?.isExtracted
                                 ? 'bg-green-500/10 border-green-500/50 text-green-600 dark:text-green-400 hover:bg-green-500/20'
-                                : 'bg-white dark:bg-gray-800/50 border-border text-gray-500 hover:text-gray-700 dark:hover:text-gray-200'
+                                : 'bg-sidebar border-border text-text-muted hover:text-text-main dark:hover:text-gray-200'
                         } ${!pdfUrl ? 'opacity-40 cursor-not-allowed' : ''}`}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
@@ -651,7 +651,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                     <button
                         onClick={() => pdfUrl && setShowDownloadDialog(true)}
                         disabled={!pdfUrl}
-                        className={`p-2 rounded-lg border border-border bg-white dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-all ${
+                        className={`p-2 rounded-lg border border-border bg-sidebar hover:bg-surface text-text-muted hover:text-text-main dark:hover:text-gray-200 transition-all ${
                             !pdfUrl ? 'opacity-40 cursor-not-allowed' : ''
                         }`}
                         title="Download PDF File"

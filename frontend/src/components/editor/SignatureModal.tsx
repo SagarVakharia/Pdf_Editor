@@ -116,12 +116,11 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({ isOpen, onClose,
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm">
             <div
-                className="relative w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden"
-                style={{ background: '#1e2433', border: '1px solid rgba(255,255,255,0.08)' }}
+                className="relative w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden bg-sidebar border border-border"
             >
                 {/* Header */}
                 <div className="px-6 pt-6 pb-4">
-                    <h3 className="text-white text-xl font-bold">Draw or Upload Signature</h3>
+                    <h3 className="text-text-main text-xl font-bold">Draw or Upload Signature</h3>
                 </div>
 
                 {/* Tabs */}
@@ -132,8 +131,8 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({ isOpen, onClose,
                             onClick={() => setActiveTab(tab)}
                             className={`flex-1 py-2 text-sm font-semibold border-b-2 transition-colors capitalize ${
                                 activeTab === tab
-                                    ? 'border-indigo-500 text-white'
-                                    : 'border-transparent text-gray-400 hover:text-gray-300'
+                                    ? 'border-indigo-500 text-text-main'
+                                    : 'border-transparent text-text-muted hover:text-gray-300'
                             }`}
                         >
                             {tab === 'draw' ? 'Draw' : 'Type'}
@@ -160,8 +159,8 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({ isOpen, onClose,
                                 onTouchEnd={stopDrawing}
                             />
                             {/* Baseline */}
-                            <div className="absolute bottom-8 left-4 right-4 border-b border-gray-300 pointer-events-none" />
-                            <span className="absolute bottom-2 left-4 text-xs text-gray-400 select-none pointer-events-none">Sign above</span>
+                            <div className="absolute bottom-8 left-4 right-4 border-b border-border pointer-events-none" />
+                            <span className="absolute bottom-2 left-4 text-xs text-text-muted select-none pointer-events-none">Sign above</span>
                         </div>
                     ) : (
                         <div className="rounded-xl overflow-hidden" style={{ background: '#fff', height: '220px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 16, padding: 16 }}>
@@ -174,7 +173,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({ isOpen, onClose,
                                         className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors ${
                                             typedFont === f.name
                                                 ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
-                                                : 'border-gray-300 text-gray-500 hover:border-gray-400'
+                                                : 'border-border text-text-muted hover:border-gray-400'
                                         }`}
                                         style={{ fontFamily: f.name }}
                                     >
@@ -187,7 +186,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({ isOpen, onClose,
                                 placeholder="Type your signature..."
                                 value={typedSignature}
                                 onChange={(e) => setTypedSignature(e.target.value)}
-                                className="w-full bg-transparent border-none text-center outline-none text-4xl text-black"
+                                className="w-full bg-transparent border-none text-center outline-none text-4xl text-text-main"
                                 style={{ fontFamily: typedFont }}
                             />
                         </div>
@@ -224,15 +223,13 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({ isOpen, onClose,
                 <div className="flex gap-3 px-6 pt-4">
                     <button
                         onClick={handleClear}
-                        className="flex-1 py-3 rounded-lg text-sm font-semibold text-white transition-colors"
-                        style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+                        className="flex-1 py-3 rounded-lg text-sm font-semibold text-text-main transition-colors bg-surface border border-border"
                     >
                         Clear
                     </button>
                     <button
                         onClick={handleUploadImage}
-                        className="flex-1 py-3 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-2 transition-colors hover:opacity-90"
-                        style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+                        className="flex-1 py-3 rounded-lg text-sm font-semibold text-text-main flex items-center justify-center gap-2 transition-colors hover:opacity-90 bg-surface border border-border"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
@@ -245,14 +242,13 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({ isOpen, onClose,
                 <div className="flex gap-3 px-6 pt-3 pb-6">
                     <button
                         onClick={onClose}
-                        className="flex-1 py-3 rounded-lg text-sm font-semibold text-white transition-colors hover:opacity-90"
-                        style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+                        className="flex-1 py-3 rounded-lg text-sm font-semibold text-text-main transition-colors hover:opacity-90 bg-surface border border-border"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleSave}
-                        className="flex-1 py-3 rounded-lg text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95"
+                        className="flex-1 py-3 rounded-lg text-sm font-bold text-text-main transition-all hover:opacity-90 active:scale-95"
                         style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
                     >
                         Save

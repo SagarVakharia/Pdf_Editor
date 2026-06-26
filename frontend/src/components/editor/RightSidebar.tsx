@@ -42,7 +42,7 @@ export const RightSidebar: React.FC = () => {
                     className={`h-16 flex-1 py-3.5 text-sm font-semibold capitalize border-b-2 transition-all duration-200 ${
                         activeRightTab === 'properties'
                             ? 'border-indigo-600 dark:border-indigo-400 text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20'
-                            : 'border-transparent text-text-muted hover:text-text-main hover:bg-gray-50 dark:hover:bg-gray-800/30'
+                            : 'border-transparent text-text-muted hover:text-text-main hover:bg-surface dark:hover:bg-gray-800/30'
                     }`}
                 >
                     Properties
@@ -52,7 +52,7 @@ export const RightSidebar: React.FC = () => {
                     className={`h-16 flex-1 py-3.5 text-sm font-semibold capitalize border-b-2 transition-all duration-200 ${
                         activeRightTab === 'layers'
                             ? 'border-indigo-600 dark:border-indigo-400 text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20'
-                            : 'border-transparent text-text-muted hover:text-text-main hover:bg-gray-50 dark:hover:bg-gray-800/30'
+                            : 'border-transparent text-text-muted hover:text-text-main hover:bg-surface dark:hover:bg-gray-800/30'
                     }`}
                 >
                     Layers
@@ -64,7 +64,7 @@ export const RightSidebar: React.FC = () => {
                 {activeRightTab === 'properties' ? (
                     !selectedAnnotation ? (
                         <div className="flex flex-col items-center justify-center h-full text-center text-text-muted">
-                            <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800/50 flex items-center justify-center mb-4 border border-border">
+                            <div className="w-16 h-16 rounded-2xl bg-surface/50 flex items-center justify-center mb-4 border border-border">
                                 <Sliders className="w-8 h-8 opacity-40 text-text-muted" />
                             </div>
                             <p className="text-base font-semibold text-text-main">No Selection</p>
@@ -187,32 +187,32 @@ export const RightSidebar: React.FC = () => {
                                         <div className="flex bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-border p-1 divide-x divide-border">
                                             <button
                                                 onClick={() => handleChange('textAlign', 'left')}
-                                                className={`flex-1 p-2 flex items-center justify-center rounded-l hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors ${selectedAnnotation.textAlign === 'left' ? 'text-indigo-500 font-bold' : 'text-text-muted'}`}
+                                                className={`flex-1 p-2 flex items-center justify-center rounded-l hover:bg-surface/50 transition-colors ${selectedAnnotation.textAlign === 'left' ? 'text-indigo-500 font-bold' : 'text-text-muted'}`}
                                             >
                                                 <AlignLeft className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => handleChange('textAlign', 'center')}
-                                                className={`flex-1 p-2 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors ${selectedAnnotation.textAlign === 'center' ? 'text-indigo-500 font-bold' : 'text-text-muted'}`}
+                                                className={`flex-1 p-2 flex items-center justify-center hover:bg-surface/50 transition-colors ${selectedAnnotation.textAlign === 'center' ? 'text-indigo-500 font-bold' : 'text-text-muted'}`}
                                             >
                                                 <AlignCenter className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => handleChange('textAlign', 'right')}
-                                                className={`flex-1 p-2 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors ${selectedAnnotation.textAlign === 'right' ? 'text-indigo-500 font-bold' : 'text-text-muted'}`}
+                                                className={`flex-1 p-2 flex items-center justify-center hover:bg-surface/50 transition-colors ${selectedAnnotation.textAlign === 'right' ? 'text-indigo-500 font-bold' : 'text-text-muted'}`}
                                             >
                                                 <AlignRight className="w-4 h-4" />
                                             </button>
                                             <div className="w-px h-full bg-border mx-1" />
                                             <button
                                                 onClick={() => handleChange('isBold', !selectedAnnotation.isBold)}
-                                                className={`flex-1 p-2 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors ${selectedAnnotation.isBold ? 'text-indigo-500 font-bold bg-gray-100 dark:bg-gray-700' : 'text-text-muted'}`}
+                                                className={`flex-1 p-2 flex items-center justify-center hover:bg-surface/50 transition-colors ${selectedAnnotation.isBold ? 'text-indigo-500 font-bold bg-gray-100 dark:bg-gray-700' : 'text-text-muted'}`}
                                             >
                                                 <Bold className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => handleChange('isItalic', !selectedAnnotation.isItalic)}
-                                                className={`flex-1 p-2 flex items-center justify-center rounded-r hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors ${selectedAnnotation.isItalic ? 'text-indigo-500 font-bold bg-gray-100 dark:bg-gray-700' : 'text-text-muted'}`}
+                                                className={`flex-1 p-2 flex items-center justify-center rounded-r hover:bg-surface/50 transition-colors ${selectedAnnotation.isItalic ? 'text-indigo-500 font-bold bg-gray-100 dark:bg-gray-700' : 'text-text-muted'}`}
                                             >
                                                 <Italic className="w-4 h-4" />
                                             </button>
@@ -435,11 +435,11 @@ export const RightSidebar: React.FC = () => {
                                                 className={`flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer group ${
                                                     selectedAnnotationId === ann.id
                                                         ? 'bg-indigo-600/10 dark:bg-indigo-950/20 border-indigo-500/50 text-indigo-600 dark:text-indigo-400'
-                                                        : 'bg-surface border-border hover:border-gray-300 dark:hover:border-gray-600'
+                                                        : 'bg-surface border-border hover:border-border dark:hover:border-gray-600'
                                                 }`}
                                             >
                                                 <div className="flex items-center gap-3">
-                                                    <span className="text-xs font-mono text-text-muted h-5 w-5 flex items-center justify-center rounded bg-gray-100 dark:bg-gray-800">
+                                                    <span className="text-xs font-mono text-text-muted h-5 w-5 flex items-center justify-center rounded bg-surface">
                                                         {i + 1}
                                                     </span>
                                                     <div className="flex flex-col">
@@ -463,7 +463,7 @@ export const RightSidebar: React.FC = () => {
                                                         e.stopPropagation();
                                                         dispatch(deleteAnnotation(ann.id));
                                                     }}
-                                                    className="p-1.5 text-text-muted hover:text-rose-500 dark:hover:text-rose-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                                    className="p-1.5 text-text-muted hover:text-rose-500 dark:hover:text-rose-400 hover:bg-surface rounded transition-colors opacity-0 group-hover:opacity-100"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>

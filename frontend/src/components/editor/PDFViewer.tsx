@@ -350,7 +350,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
                         <button
                             onClick={handleLoadUrl}
                             disabled={isLoadingUrl}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-text-main rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
                         >
                             {isLoadingUrl ? 'Loading...' : 'Load'}
                         </button>
@@ -361,7 +361,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
     }
 
     return (
-        <div className="flex justify-center p-8 min-h-full bg-slate-950/50">
+        <div className="flex justify-center p-8 min-h-full bg-background/50">
             <div className="shadow-2xl">
                 <Document
                     file={file}
@@ -386,7 +386,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
                                 pageNumber={page.originalIndex}
                                 scale={scale}
                                 rotate={page.rotation}
-                                className="bg-white shadow-lg relative"
+                                className="bg-sidebar shadow-lg relative"
                                 renderTextLayer={!page.isExtracted}
                                 renderAnnotationLayer={true}
                             >

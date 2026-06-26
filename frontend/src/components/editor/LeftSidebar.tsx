@@ -69,7 +69,7 @@ export const LeftSidebar: React.FC = () => {
             {/* Content */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
                 {!pdfUrl ? (
-                    <div className="text-center text-slate-500 mt-10 text-sm">
+                    <div className="text-center text-text-muted mt-10 text-sm">
                         <Grid className="w-10 h-10 mx-auto mb-3 opacity-20" />
                         No document
                     </div>

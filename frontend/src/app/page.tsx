@@ -3,7 +3,7 @@ import { ArrowRight, FileText, Shield, Zap } from 'lucide-react';
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-slate-950 text-white selection:bg-indigo-500/30">
+    <main className="min-h-screen bg-background text-text-main selection:bg-indigo-500/30">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-blue-500/10 blur-3xl" />
@@ -13,7 +13,7 @@ export default function Home() {
             <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
               PDF Master
             </div>
-            <Link href="/editor" className="px-6 py-2.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all border border-white/10">
+            <Link href="/editor" className="px-6 py-2.5 rounded-full bg-sidebar/10 hover:bg-sidebar/20 backdrop-blur-sm transition-all border border-white/10">
               Launch Editor
             </Link>
           </nav>
@@ -22,7 +22,7 @@ export default function Home() {
             <h1 className="text-6xl md:text-7xl font-bold tracking-tight">
               Edit PDFs with <span className="text-indigo-400">Superpowers</span>
             </h1>
-            <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-xl text-text-muted max-w-2xl mx-auto leading-relaxed">
               The most advanced, secure, and beautiful PDF editor on the web.
               Sign, annotate, and modify documents directly in your browser.
             </p>
@@ -49,10 +49,10 @@ export default function Home() {
             { icon: Shield, title: "Secure by Design", desc: "Your files never leave your browser for basic edits." },
             { icon: FileText, title: "Full Suite", desc: "Text, ink, signatures, images - all in one place." }
           ].map((feature, i) => (
-            <div key={i} className="p-8 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-colors backdrop-blur-sm">
+            <div key={i} className="p-8 rounded-2xl bg-sidebar/5 border border-white/10 hover:border-white/20 transition-colors backdrop-blur-sm">
               <feature.icon className="w-12 h-12 text-indigo-400 mb-6" />
               <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
-              <p className="text-slate-400">{feature.desc}</p>
+              <p className="text-text-muted">{feature.desc}</p>
             </div>
           ))}
         </div>
