@@ -2,7 +2,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface Annotation {
     id: string;
-    type: 'text' | 'draw' | 'image' | 'sign' | 'line' | 'arrow' | 'rectangle' | 'highlight' | 'stamp';
+    type: 'text' | 'draw' | 'image' | 'sign' | 'line' | 'arrow' | 'rectangle' | 'highlight' | 'stamp' | 'circle' | 'triangle' | 'star' | 'diamond';
     x: number;
     y: number;
     page: number;
@@ -28,6 +28,7 @@ interface Annotation {
     endY?: number; // For lines/arrows
     fillColor?: string; // For rectangles/shapes
     stampText?: string; // Custom stamp label
+    shapeType?: 'rectangle' | 'circle' | 'triangle' | 'star' | 'diamond' | 'line' | 'arrow'; // For shape tool
 }
 
 interface PageConfig {
@@ -43,7 +44,8 @@ interface CanvasState {
     totalPages: number;
     pages: PageConfig[]; // Virtual pages
     scale: number;
-    tool: 'select' | 'hand' | 'text' | 'draw' | 'erase' | 'image' | 'sign' | 'shape' | 'line' | 'arrow' | 'rectangle' | 'highlight' | 'stamp';
+    tool: 'select' | 'hand' | 'text' | 'draw' | 'erase' | 'image' | 'sign' | 'shape' | 'line' | 'arrow' | 'rectangle' | 'highlight' | 'stamp' | 'circle' | 'triangle' | 'star' | 'diamond';
+    activeShapeType: 'rectangle' | 'circle' | 'triangle' | 'star' | 'diamond' | 'line' | 'arrow';
     theme: 'light' | 'dark';
     annotations: Annotation[];
     selectedAnnotationId: string | null;
@@ -66,6 +68,7 @@ const initialState: CanvasState = {
     pages: [],
     scale: 1,
     tool: 'select',
+    activeShapeType: 'rectangle',
     theme: 'light',
     annotations: [],
     selectedAnnotationId: null,
@@ -292,6 +295,9 @@ export const canvasSlice = createSlice({
         },
         setActiveSignature: (state, action: PayloadAction<CanvasState['activeSignature']>) => {
             state.activeSignature = action.payload;
+        },
+        setActiveShapeType: (state, action: PayloadAction<CanvasState['activeShapeType']>) => {
+            state.activeShapeType = action.payload;
         }
     },
 });
@@ -302,7 +308,7 @@ export const {
     addAnnotation, updateAnnotation, removeAnnotation, deleteAnnotation, setSelectedAnnotationId,
     setSidebarLeftOpen, setSidebarRightOpen, setActiveSidebarTab, setActiveRightTab,
     updateAnnotationProperties, undo, redo, navigateToPage, togglePageExtraction, setAnnotations, removeAnnotations,
-    toggleTheme, setTheme, setActiveStamp, setActiveSignature
+    toggleTheme, setTheme, setActiveStamp, setActiveSignature, setActiveShapeType
 } = canvasSlice.actions;
 
 export default canvasSlice.reducer;

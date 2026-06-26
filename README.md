@@ -16,7 +16,15 @@ An interactive, premium-designed, web-based PDF Editor that allows users to modi
   - Adjust image opacity down to 10% to apply professional watermarks.
 - **Signature & Ink Drawing**
   - Draw annotations or sign documents directly using the Pen tool.
+  - Signature Modal with dark UI theme supporting drawing, typing (custom fonts), and image uploads.
   - Adjust stroke/brush thickness (size), opacity, and hex color values in real-time.
+- **Advanced Shapes Tool**
+  - Unified Shape Picker allowing users to select and draw various shapes.
+  - Supported shapes include: Rectangle, Circle/Ellipse, Triangle, Star, Diamond, Straight Line, and Arrow.
+- **Improved Workspace Controls**
+  - Free movement for all elements: easily drag text, images, shapes, signatures, and stamps across the canvas.
+  - Easily delete any hovered or selected element with a quick inline delete button (✕).
+  - Global Keyboard Shortcuts support: `Ctrl+Z` (Undo), `Ctrl+Y` (Redo), `Delete`/`Backspace` (Delete element), and tool-specific hotkeys (e.g., `V`, `T`, `P`, `E`).
 - **Visual Document Page Organizer**
   - View full-page thumbnails in the left sidebar.
   - Drag-and-drop page items to reorder pages.

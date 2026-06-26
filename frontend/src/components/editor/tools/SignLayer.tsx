@@ -128,6 +128,9 @@ export const SignLayer: React.FC<SignLayerProps> = ({ pageNumber, scale }) => {
                                     strokeLinejoin="round"
                                 />
                             </svg>
+                        ) : ann.content?.startsWith('blob:') || ann.content?.startsWith('data:') ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={ann.content} alt="signature" className="w-full h-full object-contain pointer-events-none" draggable={false} />
                         ) : (
                             <span style={{ fontFamily: 'Dancing Script, cursive', fontSize: height * 0.8, color: ann.color || '#000000' }}>
                                 {ann.content}

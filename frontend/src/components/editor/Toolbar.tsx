@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import {
@@ -14,7 +14,9 @@ import {
     removeAnnotations,
     toggleTheme,
     setActiveStamp,
-    setActiveSignature
+    setActiveSignature,
+    setActiveShapeType,
+    deleteAnnotation
 } from '../../store/slices/canvasSlice';
 import { generatePDF } from '../../utils/pdfGenerator';
 import { SignatureModal } from './SignatureModal';
@@ -54,28 +56,77 @@ const DEFAULT_STAMPS = [
 export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
     const dispatch = useDispatch();
     const {
-        scale,
-        tool,
-        currentPage,
-        totalPages,
-        sidebarLeftOpen,
-        sidebarRightOpen,
-        history,
-        pdfUrl,
-        pages,
-        annotations,
-        theme,
-        activeStamp
+        scale, tool, currentPage, totalPages, sidebarLeftOpen, sidebarRightOpen,
+        history, pdfUrl, pages, annotations, theme, activeStamp, activeShapeType, selectedAnnotationId
     } = useSelector((state: RootState) => state.canvas);
 
-    const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+    const [
+        showDownloadDialog, setShowDownloadDialog
+    ] = useState(false);
     const [fileName, setFileName] = useState('edited_document');
     const [stampDropdownOpen, setStampDropdownOpen] = useState(false);
+    const [shapeDropdownOpen, setShapeDropdownOpen] = useState(false);
     const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
+    const shapeDropdownRef = useRef<HTMLDivElement>(null);
+    const stampDropdownRef = useRef<HTMLDivElement>(null);
 
     const activeTool = tool;
     const canUndo = history.past.length > 0;
     const canRedo = history.future.length > 0;
+
+    // ── Global keyboard shortcuts ──────────────────────────────────────────────
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const tag = (e.target as HTMLElement).tagName;
+            const isInput = tag === 'INPUT' || tag === 'TEXTAREA';
+
+            // Undo / Redo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault(); dispatch(undo()); return;
+            }
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                e.preventDefault(); dispatch(redo()); return;
+            }
+
+            if (isInput) return; // Don't intercept text editing
+
+            // Delete selected annotation
+            if ((e.key === 'Delete' || e.key === 'Backspace')) {
+                const state = (window as any).__REDUX_STATE__;
+                // Access via selectedAnnotationId from store — dispatch handled via selector
+                e.preventDefault();
+                // We'll emit a custom event to signal delete
+                window.dispatchEvent(new CustomEvent('delete-selected'));
+                return;
+            }
+
+            // Tool shortcuts
+            const shortcuts: Record<string, string> = {
+                'v': 'select', 'h': 'hand', 't': 'text', 'p': 'draw',
+                'e': 'erase', 'i': 'image', 'Escape': 'select'
+            };
+            if (shortcuts[e.key]) {
+                e.preventDefault();
+                dispatch(setTool(shortcuts[e.key] as any));
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [dispatch]);
+
+    // Close dropdowns on outside click
+    useEffect(() => {
+        const handleOutside = (e: MouseEvent) => {
+            if (shapeDropdownRef.current && !shapeDropdownRef.current.contains(e.target as Node)) {
+                setShapeDropdownOpen(false);
+            }
+            if (stampDropdownRef.current && !stampDropdownRef.current.contains(e.target as Node)) {
+                setStampDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleOutside);
+        return () => document.removeEventListener('mousedown', handleOutside);
+    }, []);
 
     const handleDownload = async () => {
         if (!pdfUrl) return;
@@ -136,14 +187,18 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
 
     return (
         <div className="flex flex-col z-50 shadow-xl relative bg-sidebar border-b border-border transition-colors duration-200">
-            <SignatureModal 
-                isOpen={isSignatureModalOpen} 
-                onClose={() => setIsSignatureModalOpen(false)} 
+            <SignatureModal
+                isOpen={isSignatureModalOpen}
+                onClose={() => setIsSignatureModalOpen(false)}
                 onSave={(sig) => {
-                    dispatch(setActiveSignature(sig));
+                    // Map the new signature format (supports imageUrl)
+                    const adapted: any = sig.imageUrl
+                        ? { type: 'draw', content: sig.imageUrl, width: sig.width, height: sig.height }
+                        : { type: sig.type, path: sig.path, content: sig.content, width: sig.width, height: sig.height };
+                    dispatch(setActiveSignature(adapted));
                     dispatch(setTool('sign'));
                     setIsSignatureModalOpen(false);
-                }} 
+                }}
             />
             {showDownloadDialog && (
                 <div className="absolute top-16 right-4 bg-sidebar border border-border p-5 rounded-xl shadow-2xl w-80 animate-in fade-in zoom-in-95 duration-200 z-[60]">
@@ -213,18 +268,92 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                     {renderToolButton('draw', 'Draw (P)', (
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
                     ))}
-                    {/* 5. Line Tool */}
-                    {renderToolButton('line', 'Line (L)', (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><line x1="5" y1="19" x2="19" y2="5"></line></svg>
-                    ))}
-                    {/* 6. Arrow Tool */}
-                    {renderToolButton('arrow', 'Arrow (A)', (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><line x1="5" y1="19" x2="19" y2="5"></line><polyline points="12 5 19 5 19 12"></polyline></svg>
-                    ))}
-                    {/* 7. Box Tool */}
-                    {renderToolButton('rectangle', 'Box (B)', (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect width="18" height="18" x="3" y="3" rx="2"></rect></svg>
-                    ))}
+
+                    {/* 5–7. Unified Shape Tool */}
+                    <div className="relative" ref={shapeDropdownRef}>
+                        <button
+                            onClick={() => setShapeDropdownOpen(!shapeDropdownOpen)}
+                            className={`p-2 md:p-2.5 rounded-lg flex items-center justify-center gap-0.5 transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md ${
+                                ['line','arrow','rectangle','circle','triangle','star','diamond','shape'].includes(activeTool)
+                                    ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/50 scale-105'
+                                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800/80'
+                            }`}
+                            title="Shapes"
+                        >
+                            {/* Shape icon based on activeShapeType */}
+                            {activeShapeType === 'circle' && (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="9"/></svg>
+                            )}
+                            {activeShapeType === 'triangle' && (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><polygon points="12,3 22,21 2,21"/></svg>
+                            )}
+                            {activeShapeType === 'star' && (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>
+                            )}
+                            {activeShapeType === 'diamond' && (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><polygon points="12,2 22,12 12,22 2,12"/></svg>
+                            )}
+                            {activeShapeType === 'line' && (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><line x1="5" y1="19" x2="19" y2="5"/></svg>
+                            )}
+                            {activeShapeType === 'arrow' && (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><line x1="5" y1="19" x2="19" y2="5"/><polyline points="12 5 19 5 19 12"/></svg>
+                            )}
+                            {(!activeShapeType || activeShapeType === 'rectangle') && (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+                            )}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-70"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+
+                        {shapeDropdownOpen && (
+                            <div className="absolute top-12 left-0 z-50 rounded-xl shadow-2xl py-2 w-52 animate-in fade-in slide-in-from-top-2 duration-150" style={{ background: 'var(--color-sidebar, #fff)', border: '1px solid var(--color-border, #e5e7eb)' }}>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-3 pb-1 pt-1">Shapes</p>
+                                {[
+                                    { type: 'rectangle', label: 'Rectangle', icon: <rect width="14" height="10" x="5" y="7" rx="1"/> },
+                                    { type: 'circle', label: 'Circle / Ellipse', icon: <circle cx="12" cy="12" r="7"/> },
+                                    { type: 'triangle', label: 'Triangle', icon: <polygon points="12,5 20,19 4,19"/> },
+                                    { type: 'star', label: 'Star', icon: <polygon points="12,2 15,9 22,9 16,14 18,21 12,17 6,21 8,14 2,9 9,9"/> },
+                                    { type: 'diamond', label: 'Diamond', icon: <polygon points="12,2 22,12 12,22 2,12"/> },
+                                ].map(({ type, label, icon }) => (
+                                    <button
+                                        key={type}
+                                        onClick={() => {
+                                            dispatch(setActiveShapeType(type as any));
+                                            dispatch(setTool('shape'));
+                                            setShapeDropdownOpen(false);
+                                        }}
+                                        className={`w-full px-3 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
+                                            activeShapeType === type && ['shape','rectangle','circle','triangle','star','diamond'].includes(activeTool) ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-200'
+                                        }`}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icon}</svg>
+                                        {label}
+                                    </button>
+                                ))}
+                                <div className="border-t border-gray-200 dark:border-gray-700 my-1"/>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-3 pb-1">Lines</p>
+                                {[
+                                    { type: 'line', label: 'Straight Line', icon: <line x1="4" y1="20" x2="20" y2="4"/> },
+                                    { type: 'arrow', label: 'Arrow', icon: <><line x1="4" y1="20" x2="20" y2="4"/><polyline points="14 4 20 4 20 10"/></> },
+                                ].map(({ type, label, icon }) => (
+                                    <button
+                                        key={type}
+                                        onClick={() => {
+                                            dispatch(setActiveShapeType(type as any));
+                                            dispatch(setTool('shape'));
+                                            setShapeDropdownOpen(false);
+                                        }}
+                                        className={`w-full px-3 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
+                                            activeShapeType === type && ['shape','line','arrow'].includes(activeTool) ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-200'
+                                        }`}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icon}</svg>
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                     {/* 8. Highlight Tool */}
                     {renderToolButton('highlight', 'Highlight', (
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="m9 11-6 6v3h3l6-6"></path><path d="m22 2-3 3-8.5 8.5-1.5-1.5L17.5 3.5 20.5.5ZM19 5l-1.5-1.5"></path></svg>
