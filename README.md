@@ -48,7 +48,11 @@ An interactive, premium-designed, web-based PDF Editor that allows users to modi
 - **PDF Compilation**: `pdf-lib` (handles copy-pages, rotate-page, drawText with custom wrapping, drawRectangle masking, and drawImage operations)
 
 ### Backend
-- **Server**: Node.js, Express.js, TypeScript (CORS proxy routing to stream external PDF files directly to the editor canvas)
+- **Server**: Node.js, Express.js, TypeScript
+- **Security Features**:
+  - **Strict CORS Validation**: Ensures backend APIs can only be consumed by authorized frontend clients.
+  - **Rate Limiting**: Protects backend resources from automated abuse, brute-force, and DDoS attacks.
+  - **SSRF Protection**: Secure PDF proxy routing that validates domain names and explicitly blocks access to localhost, private networks, and cloud metadata instances to prevent Server-Side Request Forgery.
 
 ---
 
