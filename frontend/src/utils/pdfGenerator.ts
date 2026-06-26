@@ -55,7 +55,7 @@ interface PageConfig {
 
 interface Annotation {
     id: string;
-    type: 'text' | 'draw' | 'image' | 'sign' | 'line' | 'arrow' | 'rectangle' | 'highlight' | 'stamp';
+    type: 'text' | 'draw' | 'image' | 'sign' | 'line' | 'arrow' | 'rectangle' | 'highlight' | 'stamp' | 'circle' | 'triangle' | 'star' | 'diamond';
     x: number;
     y: number;
     page: number;
