@@ -2,7 +2,7 @@
 
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
-import { setTotalPages, setPage, setPdfUrl } from '../../store/slices/canvasSlice';
+import { setTotalPages, setPage, setPdfUrl, setTool } from '../../store/slices/canvasSlice';
 import React, { useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { FileText, Image as ImageIcon, PenTool } from 'lucide-react';
@@ -12,6 +12,8 @@ import { TextLayer } from '@/components/editor/tools/TextLayer';
 import { DrawLayer } from '@/components/editor/tools/DrawLayer';
 import { HandLayer } from '@/components/editor/tools/HandLayer';
 import { ImageLayer } from '@/components/editor/tools/ImageLayer';
+import { StampLayer } from '@/components/editor/tools/StampLayer';
+import { SignLayer } from '@/components/editor/tools/SignLayer';
 import { nanoid } from '@reduxjs/toolkit';
 import { addAnnotation, setSelectedAnnotationId } from '../../store/slices/canvasSlice';
 
@@ -29,7 +31,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
     const [numPages, setNumPages] = useState<number>(0);
     const [urlInput, setUrlInput] = useState('');
     const [isLoadingUrl, setIsLoadingUrl] = useState(false);
-    const { pages, annotations, navigationRequest, tool: currentTool } = useSelector((state: RootState) => state.canvas);
+    const { pages, annotations, navigationRequest, tool: currentTool, activeStamp, activeSignature } = useSelector((state: RootState) => state.canvas);
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
@@ -111,6 +113,53 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
     }, [navigationRequest]);
 
     const handlePageClick = (e: React.MouseEvent, pageIndex: number) => {
+        const pageElement = e.currentTarget;
+        const rect = pageElement.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / scale;
+        const y = (e.clientY - rect.top) / scale;
+
+        if (currentTool === 'stamp') {
+            if (!activeStamp) return;
+            const id = nanoid();
+            dispatch(addAnnotation({
+                id,
+                type: 'stamp',
+                x,
+                y,
+                page: pageIndex,
+                content: activeStamp.text,
+                color: activeStamp.color,
+                size: 130, // Default stamp width
+                opacity: 1,
+                stampText: activeStamp.text
+            }));
+            dispatch(setSelectedAnnotationId(id));
+            dispatch(setTool('select'));
+            return;
+        }
+
+        if (currentTool === 'sign') {
+            if (!activeSignature) return;
+            const id = nanoid();
+            dispatch(addAnnotation({
+                id,
+                type: 'sign',
+                x,
+                y,
+                page: pageIndex,
+                content: activeSignature.type === 'text' ? activeSignature.content : undefined,
+                path: activeSignature.type === 'draw' ? activeSignature.path : undefined,
+                color: '#000000', // Default signature color
+                size: 2, // line width
+                opacity: 1,
+                minWidth: activeSignature.width,
+                minHeight: activeSignature.height
+            }));
+            dispatch(setSelectedAnnotationId(id));
+            dispatch(setTool('select'));
+            return;
+        }
+
         // Only handle click if tool is 'text'
         if (currentTool !== 'text') return;
 
@@ -118,12 +167,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
         const target = e.target as HTMLElement;
         const isTextSpan = target.tagName === 'SPAN' && target.closest('.react-pdf__Page__textContent');
 
-        const pageElement = e.currentTarget;
-        const rect = pageElement.getBoundingClientRect();
 
-        // Calculate clicked position relative to PDF page
-        const x = (e.clientX - rect.left) / scale;
-        const y = (e.clientY - rect.top) / scale;
 
         // Prevent double extraction by checking if there's already an annotation nearby on the same page
         const isAlreadyExtracted = annotations.some(a => 
@@ -238,7 +282,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
             page: pageIndex,
             content: content,
             color: '#000000',
-            backgroundColor: '#ffffff', // Opaque background
+            backgroundColor: 'transparent', // transparent so it layers over the PDF
             size: fontSize,
             minWidth: minW,
             minHeight: minH,
@@ -258,34 +302,34 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
     if (!file) {
         return (
             <div 
-                className="flex flex-col items-center justify-center h-full text-slate-400 py-12 px-4"
+                className="flex flex-col items-center justify-center h-full text-text-muted py-12 px-4"
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
             >
                 <div 
                     onClick={onUpload}
-                    className="bg-[var(--sidebar)] p-8 rounded-2xl border border-white/5 shadow-2xl mb-8 flex flex-col items-center cursor-pointer hover:border-indigo-500/30 hover:bg-slate-900/40 transition-all max-w-lg w-full group"
+                    className="bg-sidebar p-8 rounded-2xl border border-border shadow-2xl mb-8 flex flex-col items-center cursor-pointer hover:border-indigo-500/30 hover:bg-surface/50 transition-all max-w-lg w-full group"
                 >
-                    <div className="w-24 h-24 bg-[var(--surface)] rounded-2xl flex items-center justify-center mb-6 border border-white/5 shadow-[0_0_30px_rgba(99,102,241,0.15)] group-hover:border-indigo-500/30 group-hover:scale-105 transition-all">
-                        <FileText className="w-12 h-12 text-[var(--primary)] opacity-90 drop-shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
+                    <div className="w-24 h-24 bg-surface rounded-2xl flex items-center justify-center mb-6 border border-border shadow-[0_0_30px_rgba(99,102,241,0.15)] group-hover:border-indigo-500/30 group-hover:scale-105 transition-all">
+                        <FileText className="w-12 h-12 text-primary opacity-90 drop-shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
                     </div>
                     <div className="text-center">
-                        <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">No PDF Loaded</h3>
-                        <p className="text-sm text-slate-500 max-w-xs mx-auto mb-8 font-medium">
+                        <h3 className="text-2xl font-bold text-text-main mb-2 tracking-tight">No PDF Loaded</h3>
+                        <p className="text-sm text-text-muted max-w-xs mx-auto mb-8 font-medium">
                             Click here to browse or drag and drop a PDF file to begin editing.
                         </p>
 
                         <div className="flex items-center gap-3 justify-center">
-                            <span className="flex items-center gap-2 px-4 py-2 bg-[var(--surface)] border border-white/10 rounded-lg text-sm font-medium transition-colors hover:text-white">
-                                <FileText className="w-4 h-4 text-indigo-400" />
+                            <span className="flex items-center gap-2 px-4 py-2 bg-surface border border-border rounded-lg text-sm font-medium transition-colors hover:text-indigo-500 text-text-main">
+                                <FileText className="w-4 h-4 text-indigo-500" />
                                 Edit Text
                             </span>
-                            <span className="flex items-center gap-2 px-4 py-2 bg-[var(--surface)] border border-white/10 rounded-lg text-sm font-medium transition-colors hover:text-white">
-                                <ImageIcon className="w-4 h-4 text-purple-400" />
+                            <span className="flex items-center gap-2 px-4 py-2 bg-surface border border-border rounded-lg text-sm font-medium transition-colors hover:text-purple-500 text-text-main">
+                                <ImageIcon className="w-4 h-4 text-purple-500" />
                                 Add Images
                             </span>
-                            <span className="flex items-center gap-2 px-4 py-2 bg-[var(--surface)] border border-white/10 rounded-lg text-sm font-medium transition-colors hover:text-white">
-                                <PenTool className="w-4 h-4 text-emerald-400" />
+                            <span className="flex items-center gap-2 px-4 py-2 bg-surface border border-border rounded-lg text-sm font-medium transition-colors hover:text-emerald-500 text-text-main">
+                                <PenTool className="w-4 h-4 text-emerald-500" />
                                 Sign PDFs
                             </span>
                         </div>
@@ -293,15 +337,15 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
                 </div>
 
                 {/* URL Loader Section */}
-                <div className="bg-[var(--sidebar)] p-6 rounded-2xl border border-white/5 shadow-2xl max-w-lg w-full">
-                    <h4 className="text-sm font-semibold text-white mb-3">Or load a document from URL</h4>
+                <div className="bg-sidebar p-6 rounded-2xl border border-border shadow-2xl max-w-lg w-full">
+                    <h4 className="text-sm font-semibold text-text-main mb-3">Or load a document from URL</h4>
                     <div className="flex gap-2">
                         <input
                             type="text"
                             placeholder="https://example.com/document.pdf"
                             value={urlInput}
                             onChange={(e) => setUrlInput(e.target.value)}
-                            className="flex-1 bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                            className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-text-main focus:outline-none focus:border-indigo-500 transition-colors"
                         />
                         <button
                             onClick={handleLoadUrl}
@@ -328,7 +372,12 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
                     {pages.map((page, index) => (
                         <div
                             key={page.id}
-                            className="relative transition-all duration-300 pdf-page-wrapper"
+                            className={`relative transition-all duration-300 pdf-page-wrapper ${
+                                currentTool === 'stamp' ? 'cursor-copy' :
+                                currentTool === 'sign' && activeSignature ? 'cursor-copy' :
+                                currentTool === 'text' ? 'cursor-text' :
+                                ''
+                            }`}
                             data-page-index={index + 1}
                             id={`page-${index + 1}`}
                             onClick={(e) => handlePageClick(e, page.originalIndex)}
@@ -347,6 +396,8 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
                                         <TextLayer pageNumber={page.originalIndex} scale={scale} />
                                         <DrawLayer pageNumber={page.originalIndex} scale={scale} />
                                         <ImageLayer pageNumber={page.originalIndex} scale={scale} />
+                                        <StampLayer pageNumber={page.originalIndex} scale={scale} />
+                                        <SignLayer pageNumber={page.originalIndex} scale={scale} />
                                         <HandLayer scale={scale} />
                                     </div>
                                 </div>

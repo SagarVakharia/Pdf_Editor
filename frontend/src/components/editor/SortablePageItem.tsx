@@ -82,25 +82,25 @@ export const SortablePageItem: React.FC<SortablePageItemProps> = ({
                     <div
                         {...attributes}
                         {...listeners}
-                        className="p-1 hover:bg-white/10 rounded cursor-grab active:cursor-grabbing text-slate-500 hover:text-white"
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded cursor-grab active:cursor-grabbing text-text-muted hover:text-text-main"
                         title="Drag to reorder"
                     >
                         <GripVertical className="w-4 h-4" />
                     </div>
-                    <span className="text-xs font-medium text-slate-300">Page {index + 1}</span>
+                    <span className="text-xs font-medium text-text-muted">Page {index + 1}</span>
                 </div>
 
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={handleMoveUp} className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white" title="Move Up">
+                    <button onClick={handleMoveUp} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded text-text-muted hover:text-text-main" title="Move Up">
                         <ChevronUp className="w-3 h-3" />
                     </button>
-                    <button onClick={handleMoveDown} className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white" title="Move Down">
+                    <button onClick={handleMoveDown} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded text-text-muted hover:text-text-main" title="Move Down">
                         <ChevronDown className="w-3 h-3" />
                     </button>
-                    <button onClick={handleRotate} className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white" title="Rotate">
+                    <button onClick={handleRotate} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded text-text-muted hover:text-text-main" title="Rotate">
                         <RotateCw className="w-3 h-3" />
                     </button>
-                    <button onClick={handleDelete} className="p-1 hover:bg-rose-500/20 rounded text-rose-400 hover:text-rose-300" title="Delete">
+                    <button onClick={handleDelete} className="p-1 hover:bg-rose-500/20 rounded text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300" title="Delete">
                         <Trash2 className="w-3 h-3" />
                     </button>
                 </div>

@@ -23,7 +23,7 @@ import { RightSidebar } from './RightSidebar';
 
 export const EditorLayout: React.FC = () => {
     const dispatch = useDispatch();
-    const { scale, pdfUrl } = useSelector((state: RootState) => state.canvas);
+    const { scale, pdfUrl, theme } = useSelector((state: RootState) => state.canvas);
 
     const handleUpload = () => {
         const input = document.createElement('input');
@@ -43,7 +43,7 @@ export const EditorLayout: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-[100dvh] bg-background text-white overflow-hidden">
+        <div className={`flex flex-col h-[100dvh] bg-background text-text-main overflow-hidden ${theme === 'dark' ? 'dark' : ''}`}>
             {/* Top Toolbar Region */}
             <Toolbar onUpload={handleUpload} />
 

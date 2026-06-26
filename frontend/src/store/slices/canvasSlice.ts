@@ -2,11 +2,11 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface Annotation {
     id: string;
-    type: 'text' | 'draw' | 'image' | 'sign';
+    type: 'text' | 'draw' | 'image' | 'sign' | 'line' | 'arrow' | 'rectangle' | 'highlight' | 'stamp';
     x: number;
     y: number;
     page: number;
-    content?: string; // For text/image url
+    content?: string; // For text/image url or stamp label
     path?: { x: number; y: number }[]; // For drawing
     color?: string;
     size?: number;
@@ -24,6 +24,10 @@ interface Annotation {
     maskY?: number;
     maskWidth?: number;
     maskHeight?: number;
+    endX?: number; // For lines/arrows
+    endY?: number; // For lines/arrows
+    fillColor?: string; // For rectangles/shapes
+    stampText?: string; // Custom stamp label
 }
 
 interface PageConfig {
@@ -39,7 +43,8 @@ interface CanvasState {
     totalPages: number;
     pages: PageConfig[]; // Virtual pages
     scale: number;
-    tool: 'select' | 'hand' | 'text' | 'draw' | 'erase' | 'image' | 'sign' | 'shape';
+    tool: 'select' | 'hand' | 'text' | 'draw' | 'erase' | 'image' | 'sign' | 'shape' | 'line' | 'arrow' | 'rectangle' | 'highlight' | 'stamp';
+    theme: 'light' | 'dark';
     annotations: Annotation[];
     selectedAnnotationId: string | null;
     sidebarLeftOpen: boolean;
@@ -47,6 +52,8 @@ interface CanvasState {
     activeSidebarTab: 'pages' | 'layers';
     activeRightTab: 'properties' | 'layers';
     navigationRequest: number | null; // For explicit navigation events
+    activeStamp: { text: string; color: string } | null;
+    activeSignature: { type: 'draw' | 'text', path?: { x: number; y: number }[], content?: string, width: number, height: number } | null;
     history: {
         past: { pages: PageConfig[], annotations: Annotation[] }[];
         future: { pages: PageConfig[], annotations: Annotation[] }[];
@@ -59,6 +66,7 @@ const initialState: CanvasState = {
     pages: [],
     scale: 1,
     tool: 'select',
+    theme: 'light',
     annotations: [],
     selectedAnnotationId: null,
     sidebarLeftOpen: true,
@@ -66,6 +74,8 @@ const initialState: CanvasState = {
     activeSidebarTab: 'pages',
     activeRightTab: 'properties',
     navigationRequest: null,
+    activeStamp: { text: 'APPROVED', color: '#22c55e' },
+    activeSignature: null,
     history: {
         past: [],
         future: []
@@ -271,6 +281,18 @@ export const canvasSlice = createSlice({
         setActiveRightTab: (state, action: PayloadAction<CanvasState['activeRightTab']>) => {
             state.activeRightTab = action.payload;
         },
+        toggleTheme: (state) => {
+            state.theme = state.theme === 'light' ? 'dark' : 'light';
+        },
+        setTheme: (state, action: PayloadAction<'light' | 'dark'>) => {
+            state.theme = action.payload;
+        },
+        setActiveStamp: (state, action: PayloadAction<{ text: string, color: string }>) => {
+            state.activeStamp = action.payload;
+        },
+        setActiveSignature: (state, action: PayloadAction<CanvasState['activeSignature']>) => {
+            state.activeSignature = action.payload;
+        }
     },
 });
 
@@ -279,7 +301,8 @@ export const {
     initPages, rotatePage, deletePage, reorderPages, movePage,
     addAnnotation, updateAnnotation, removeAnnotation, deleteAnnotation, setSelectedAnnotationId,
     setSidebarLeftOpen, setSidebarRightOpen, setActiveSidebarTab, setActiveRightTab,
-    updateAnnotationProperties, undo, redo, navigateToPage, togglePageExtraction, setAnnotations, removeAnnotations
+    updateAnnotationProperties, undo, redo, navigateToPage, togglePageExtraction, setAnnotations, removeAnnotations,
+    toggleTheme, setTheme, setActiveStamp, setActiveSignature
 } = canvasSlice.actions;
 
 export default canvasSlice.reducer;

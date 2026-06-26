@@ -1,39 +1,55 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
-import { setScale, setTool, setSidebarLeftOpen, setSidebarRightOpen, undo, redo, navigateToPage, togglePageExtraction, setAnnotations, removeAnnotations } from '../../store/slices/canvasSlice';
+import {
+    setScale,
+    setTool,
+    setSidebarLeftOpen,
+    setSidebarRightOpen,
+    undo,
+    redo,
+    navigateToPage,
+    togglePageExtraction,
+    setAnnotations,
+    removeAnnotations,
+    toggleTheme,
+    setActiveStamp,
+    setActiveSignature
+} from '../../store/slices/canvasSlice';
 import { generatePDF } from '../../utils/pdfGenerator';
-// import { pdfjs } from 'react-pdf'; // Dynamically imported to avoid SSR issues
-import { nanoid } from '@reduxjs/toolkit';
+import { SignatureModal } from './SignatureModal';
 import {
     ZoomIn,
     ZoomOut,
-    MousePointer2,
-    Hand,
-    Type,
-    PenTool,
-    Image as ImageIcon,
-    Download,
     Undo,
     Redo,
-    Upload,
-    ChevronLeft,
-    ChevronRight,
-    LayoutTemplate,
+    X,
+    FolderOpen,
+    Save,
+    Settings,
+    Moon,
+    Sun,
     PanelLeftClose,
     PanelLeftOpen,
     PanelRightClose,
     PanelRightOpen,
-    Eraser,
-    AppWindow, // For "Extract Content" placeholder or similar
-    Settings,
-    FileSignature,
-    X
+    ChevronLeft,
+    ChevronRight,
+    ChevronDown
 } from 'lucide-react';
+import { nanoid } from '@reduxjs/toolkit';
 
 interface ToolbarProps {
     onUpload: () => void;
 }
+
+const DEFAULT_STAMPS = [
+    { text: 'APPROVED', color: '#22c55e' }, // Green
+    { text: 'REJECTED', color: '#ef4444' }, // Red
+    { text: 'CONFIDENTIAL', color: '#eab308' }, // Yellow/Orange
+    { text: 'DRAFT', color: '#64748b' }, // Slate
+    { text: 'SIGN HERE', color: '#3b82f6' } // Blue
+];
 
 export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
     const dispatch = useDispatch();
@@ -47,11 +63,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
         history,
         pdfUrl,
         pages,
-        annotations
+        annotations,
+        theme,
+        activeStamp
     } = useSelector((state: RootState) => state.canvas);
 
-    const [showDownloadDialog, setShowDownloadDialog] = React.useState(false);
-    const [fileName, setFileName] = React.useState('edited_document');
+    const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+    const [fileName, setFileName] = useState('edited_document');
+    const [stampDropdownOpen, setStampDropdownOpen] = useState(false);
+    const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
 
     const activeTool = tool;
     const canUndo = history.past.length > 0;
@@ -73,40 +93,86 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
             setShowDownloadDialog(false);
         } catch (error) {
             console.error('Failed to download PDF:', error);
-            alert('Failed to generate PDF. check console for details.');
+            alert('Failed to generate PDF. Check console for details.');
         }
     };
 
+    const handleStampSelect = (stamp: { text: string, color: string }) => {
+        dispatch(setActiveStamp(stamp));
+        dispatch(setTool('stamp'));
+        setStampDropdownOpen(false);
+    };
+
+    const renderToolButton = (toolName: typeof tool, title: string, svgIcon: React.ReactNode, isDropdown: boolean = false) => {
+        const isActive = activeTool === toolName;
+        return (
+            <div className="relative group shrink-0">
+                <button
+                    onClick={() => {
+                        if (toolName === 'sign') {
+                            setIsSignatureModalOpen(true);
+                        } else if (toolName === 'stamp' && activeTool === 'stamp') {
+                            setStampDropdownOpen(!stampDropdownOpen);
+                        } else {
+                            dispatch(setTool(toolName));
+                            if (toolName !== 'stamp') setStampDropdownOpen(false);
+                        }
+                    }}
+                    className={`p-2 md:p-2.5 rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md ${
+                        isActive
+                            ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/50 scale-105'
+                            : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800/80'
+                    }`}
+                    title={title}
+                >
+                    <div className="flex items-center gap-0.5">
+                        {svgIcon}
+                        {isDropdown && <ChevronDown className="w-3.5 h-3.5 opacity-70" />}
+                    </div>
+                </button>
+            </div>
+        );
+    };
+
     return (
-        <div className="flex flex-col z-50 shadow-xl relative">
+        <div className="flex flex-col z-50 shadow-xl relative bg-sidebar border-b border-border transition-colors duration-200">
+            <SignatureModal 
+                isOpen={isSignatureModalOpen} 
+                onClose={() => setIsSignatureModalOpen(false)} 
+                onSave={(sig) => {
+                    dispatch(setActiveSignature(sig));
+                    dispatch(setTool('sign'));
+                    setIsSignatureModalOpen(false);
+                }} 
+            />
             {showDownloadDialog && (
-                <div className="absolute top-16 right-4 bg-[var(--surface)] border border-white/10 p-4 rounded-xl shadow-2xl w-80 animate-in fade-in zoom-in-95 duration-200 z-[60]">
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-white">Download PDF</h3>
+                <div className="absolute top-16 right-4 bg-sidebar border border-border p-5 rounded-xl shadow-2xl w-80 animate-in fade-in zoom-in-95 duration-200 z-[60]">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold text-text-main">Download PDF</h3>
                         <button
                             onClick={() => setShowDownloadDialog(false)}
-                            className="text-slate-400 hover:text-white transition-colors"
+                            className="text-text-muted hover:text-text-main transition-colors"
                         >
                             <X className="w-4 h-4" />
                         </button>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                         <div>
-                            <label className="text-xs text-slate-400 mb-1.5 block">File Name</label>
+                            <label className="text-xs text-text-muted mb-1.5 block">File Name</label>
                             <input
                                 type="text"
                                 value={fileName}
                                 onChange={(e) => setFileName(e.target.value)}
-                                className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text-main focus:outline-none focus:border-indigo-500 transition-colors"
                                 placeholder="Enter file name"
                                 autoFocus
                             />
                         </div>
                         <button
                             onClick={handleDownload}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-all active:scale-95"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-all active:scale-95 shadow-md shadow-indigo-500/20"
                         >
-                            <Download className="w-4 h-4" />
+                            <Save className="w-4 h-4" />
                             Download
                         </button>
                     </div>
@@ -114,93 +180,103 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
             )}
 
             {/* Top Main Toolbar */}
-            <div className="h-14 bg-sidebar border-b border-white/10 flex items-center justify-between px-4 overflow-x-auto no-scrollbar gap-4">
-                {/* Logo / Home */}
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 px-2">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                            <LayoutTemplate className="w-5 h-5 text-white" />
-                        </div>
-                        <span className="font-bold text-lg hidden md:block">PDF Editor</span>
-                    </div>
-
-                    <div className="h-6 w-px bg-white/10 mx-2 flex-shrink-0" />
-
-                    {/* Main Tools */}
-                    <div className="flex items-center gap-1">
-                        <button
-                            onClick={() => dispatch(setTool('select'))}
-                            className={`p-2 rounded-lg transition-all ${activeTool === 'select'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                            title="Select (V)"
-                        >
-                            <MousePointer2 className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={() => dispatch(setTool('hand'))}
-                            className={`p-2 rounded-lg transition-all ${activeTool === 'hand'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                            title="Pan (H)"
-                        >
-                            <Hand className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={() => dispatch(setTool('text'))}
-                            className={`p-2 rounded-lg transition-all ${activeTool === 'text'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                            title="Text (T)"
-                        >
-                            <Type className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={() => dispatch(setTool('draw'))}
-                            className={`p-2 rounded-lg transition-all ${activeTool === 'draw'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                            title="Draw (P)"
-                        >
-                            <PenTool className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={() => dispatch(setTool('erase'))}
-                            className={`p-2 rounded-lg transition-all ${activeTool === 'erase'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                            title="Erase (E)"
-                        >
-                            <Eraser className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={() => dispatch(setTool('image'))}
-                            className={`p-2 rounded-lg transition-all ${activeTool === 'image'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                            title="Image (I)"
-                        >
-                            <ImageIcon className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={() => dispatch(setTool('sign'))}
-                            className={`p-2 rounded-lg transition-all ${activeTool === 'sign'
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-                            title="Sign"
-                        >
-                            <FileSignature className="w-5 h-5" />
-                        </button>
-                    </div>
+            <div className="h-16 flex items-center justify-between px-4 gap-4 bg-sidebar">
+                {/* Logo & Sidebar toggle */}
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => dispatch(setSidebarLeftOpen(!sidebarLeftOpen))}
+                        className="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-all active:scale-95"
+                        title="Toggle Page Navigation"
+                    >
+                        {sidebarLeftOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
+                    </button>
+                    <span className="font-bold text-lg bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent select-none whitespace-nowrap">
+                        PDF Editor
+                    </span>
                 </div>
 
-                {/* Right Actions */}
-                <div className="flex items-center gap-3">
-                    <div className="flex bg-slate-800/50 rounded-lg p-1 border border-white/5">
+                {/* Center Toolbar Area - 12 tools */}
+                <div className="hidden lg:flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 justify-center px-4">
+                    {/* 1. Select Tool */}
+                    {renderToolButton('select', 'Select (V)', (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="m4 4 7.07 16.97 2.51-7.39 7.39-2.51L4 4z"></path><path d="m13 13 6 6"></path></svg>
+                    ))}
+                    {/* 2. Pan Tool */}
+                    {renderToolButton('hand', 'Pan (H)', (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v5"></path><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v6"></path><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4.5"></path><path d="M18 8a2 2 0 0 1 2 2v6a6 6 0 0 1-6 6h-2c-2.11 0-4.13-.84-5.66-2.34l-2.67-2.67a1.5 1.5 0 0 1 .45-2.43 1.5 1.5 0 0 1 1.83.44l2.05 2.05a.5.5 0 0 0 .86-.35V4a2 2 0 0 1 2-2v0a2 2 0 0 1 2 2v7"></path></svg>
+                    ))}
+                    {/* 3. Text Tool */}
+                    {renderToolButton('text', 'Text (T)', (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M4 7V4h16v3"></path><path d="M9 20h6"></path><path d="M12 4v16"></path></svg>
+                    ))}
+                    {/* 4. Draw Tool */}
+                    {renderToolButton('draw', 'Draw (P)', (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+                    ))}
+                    {/* 5. Line Tool */}
+                    {renderToolButton('line', 'Line (L)', (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><line x1="5" y1="19" x2="19" y2="5"></line></svg>
+                    ))}
+                    {/* 6. Arrow Tool */}
+                    {renderToolButton('arrow', 'Arrow (A)', (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><line x1="5" y1="19" x2="19" y2="5"></line><polyline points="12 5 19 5 19 12"></polyline></svg>
+                    ))}
+                    {/* 7. Box Tool */}
+                    {renderToolButton('rectangle', 'Box (B)', (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect width="18" height="18" x="3" y="3" rx="2"></rect></svg>
+                    ))}
+                    {/* 8. Highlight Tool */}
+                    {renderToolButton('highlight', 'Highlight', (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="m9 11-6 6v3h3l6-6"></path><path d="m22 2-3 3-8.5 8.5-1.5-1.5L17.5 3.5 20.5.5ZM19 5l-1.5-1.5"></path></svg>
+                    ))}
+                    {/* 9. Stamp Tool */}
+                    <div className="relative">
+                        {renderToolButton('stamp', `Stamp (${activeStamp ? activeStamp.text : 'Approved'})`, (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M5 22h14"></path><path d="M19.27 13.73A2.5 2.5 0 0 0 17.5 13H6.5a2.5 2.5 0 0 0-1.77.73l-1.3 1.3a1 1 0 0 0-.27.81c.06.58.55.98 1.14.98h15.4c.59 0 1.08-.4 1.14-.98a1 1 0 0 0-.27-.81Z"></path><path d="M12 13V3a1 1 0 0 0-1-1H7.5a1.5 1.5 0 0 0 0 3H9v8"></path></svg>
+                        ), true)}
+
+                        {stampDropdownOpen && (
+                            <div className="absolute top-12 left-0 bg-sidebar border border-border rounded-xl shadow-2xl py-2 w-48 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                                {DEFAULT_STAMPS.map((stamp, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => handleStampSelect(stamp)}
+                                        className="w-full px-4 py-2 text-left text-sm font-semibold hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center gap-2"
+                                        style={{ color: stamp.color }}
+                                    >
+                                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stamp.color }} />
+                                        {stamp.text}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    {/* 10. Image Tool */}
+                    {renderToolButton('image', 'Image (I)', (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>
+                    ))}
+                    {/* 11. Sign Tool */}
+                    {renderToolButton('sign', 'Sign', (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275Z"></path><path d="m15 9-6 6"></path></svg>
+                    ))}
+                    {/* 12. Erase Tool */}
+                    {renderToolButton('erase', 'Erase (E)', (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L11.7 22.3c-.9.9-2.3.9-3.2 0Z"></path><path d="M18.8 19.7 17 18"></path><path d="m14 5 6 6"></path></svg>
+                    ))}
+                </div>
+
+                {/* Right Side Actions: Undo/Redo, Open, Save, Cog, Switcher, Panel */}
+                <div className="flex items-center gap-1.5 md:gap-2.5">
+                    {/* Undo/Redo */}
+                    <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 border border-border">
                         <button
                             onClick={() => dispatch(undo())}
                             disabled={!canUndo}
-                            className={`p-1.5 rounded-md transition-colors ${canUndo ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-600 cursor-not-allowed'}`}
+                            className={`p-1.5 rounded-md transition-colors ${
+                                canUndo
+                                    ? 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-white dark:hover:bg-gray-700/50'
+                                    : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                            }`}
                             title="Undo (Ctrl+Z)"
                         >
                             <Undo className="w-4 h-4" />
@@ -208,76 +284,119 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                         <button
                             onClick={() => dispatch(redo())}
                             disabled={!canRedo}
-                            className={`p-1.5 rounded-md transition-colors ${canRedo ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-600 cursor-not-allowed'}`}
+                            className={`p-1.5 rounded-md transition-colors ${
+                                canRedo
+                                    ? 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-white dark:hover:bg-gray-700/50'
+                                    : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                            }`}
                             title="Redo (Ctrl+Y)"
                         >
                             <Redo className="w-4 h-4" />
                         </button>
                     </div>
 
+                    {/* Open Button */}
                     <button
                         onClick={onUpload}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg border border-white/10 transition-colors text-sm font-medium"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 rounded-lg text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-700/80 shadow-sm border border-border text-gray-700 dark:text-gray-200 hover:scale-105 active:scale-95 transition-all duration-200"
                     >
-                        <Upload className="w-4 h-4" />
-                        <span>Open</span>
+                        <FolderOpen className="w-4 h-4 text-indigo-500" />
+                        <span className="hidden sm:inline">Open</span>
                     </button>
 
+                    {/* Save Button */}
                     <button
-                        onClick={() => setShowDownloadDialog(true)}
+                        onClick={() => pdfUrl && setShowDownloadDialog(true)}
                         disabled={!pdfUrl}
-                        className={`flex items-center gap-2 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-lg shadow-indigo-500/20 transition-all text-sm font-medium whitespace-nowrap active:scale-95 ${!pdfUrl ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`flex items-center gap-1.5 px-4.5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 text-white select-none ${
+                            pdfUrl
+                                ? 'bg-gradient-to-br from-indigo-500 to-purple-600 hover:scale-105 active:scale-95 shadow-md shadow-indigo-500/20 cursor-pointer'
+                                : 'bg-gray-300 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border border-border cursor-not-allowed'
+                        }`}
+                        title="Save PDF"
                     >
-                        <Download className="w-4 h-4" />
-                        <span>Download</span>
+                        <Save className="w-4 h-4" />
+                        <span className="hidden sm:inline">Save</span>
+                    </button>
+
+                    {/* Settings Cog */}
+                    <button
+                        className="p-2 rounded-full text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-all hover:rotate-180 duration-500 active:scale-95"
+                        title="Settings"
+                    >
+                        <Settings className="w-5 h-5" />
+                    </button>
+
+                    {/* Theme Switcher */}
+                    <button
+                        onClick={() => dispatch(toggleTheme())}
+                        className="p-2 rounded-full text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-all active:scale-95"
+                        title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+                    >
+                        {theme === 'light' ? <Moon className="w-5 h-5 text-indigo-500" /> : <Sun className="w-5 h-5 text-yellow-500" />}
+                    </button>
+
+                    {/* Right Panel Toggle */}
+                    <button
+                        onClick={() => dispatch(setSidebarRightOpen(!sidebarRightOpen))}
+                        className="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/80 transition-all active:scale-95"
+                        title="Toggle Properties Panel"
+                    >
+                        {sidebarRightOpen ? <PanelRightClose className="w-5 h-5" /> : <PanelRightOpen className="w-5 h-5" />}
                     </button>
                 </div>
             </div>
 
             {/* Sub-header / Controls Bar */}
-            <div className="h-12 bg-[var(--sidebar)] border-b border-white/10 flex items-center justify-between px-4 backdrop-blur-sm">
-                {/* Left: Sidebar Toggle & Page Nav */}
-                <div className="flex items-center gap-4">
+            <div className="h-12 bg-sidebar border-t border-border flex items-center justify-between px-4 relative">
+                {/* Left: Page Navigation */}
+                <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg p-0.5 border border-border shadow-sm">
                     <button
-                        onClick={() => dispatch(setSidebarLeftOpen(!sidebarLeftOpen))}
-                        className={`p-2 rounded-lg transition-colors ${sidebarLeftOpen ? 'text-indigo-400 bg-white/5' : 'text-slate-400 hover:text-white'}`}
-                        title="Toggle Pages"
+                        onClick={() => dispatch(navigateToPage(Math.max(1, currentPage - 1)))}
+                        disabled={currentPage <= 1}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
-                        {sidebarLeftOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
+                        <ChevronLeft className="w-4 h-4" />
                     </button>
+                    <span className="text-xs font-semibold text-text-main px-2 min-w-[5.5rem] text-center select-none">
+                        Page {currentPage} of {Math.max(1, totalPages)}
+                    </span>
+                    <button
+                        onClick={() => dispatch(navigateToPage(Math.min(totalPages, currentPage + 1)))}
+                        disabled={currentPage >= totalPages}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                        <ChevronRight className="w-4 h-4" />
+                    </button>
+                </div>
 
-                    <div className="h-6 w-px bg-white/10" />
+                {/* Center: Zoom */}
+                <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg p-0.5 border border-border shadow-sm">
+                    <button
+                        onClick={() => dispatch(setScale(Math.max(0.2, scale - 0.1)))}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-gray-500"
+                    >
+                        <ZoomOut className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs font-semibold text-text-main w-12 text-center select-none">
+                        {Math.round(scale * 100)}%
+                    </span>
+                    <button
+                        onClick={() => dispatch(setScale(Math.min(3.0, scale + 0.1)))}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors text-gray-500"
+                    >
+                        <ZoomIn className="w-4 h-4" />
+                    </button>
+                </div>
 
-                    <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg p-1 border border-white/5">
-                        <button
-                            onClick={() => dispatch(navigateToPage(Math.max(1, currentPage - 1)))}
-                            disabled={currentPage <= 1}
-                            className="p-1 hover:bg-white/10 rounded transition-colors text-slate-400 disabled:opacity-50"
-                        >
-                            <ChevronLeft className="w-4 h-4" />
-                        </button>
-                        <span className="text-sm font-medium text-slate-300 px-2 min-w-[5rem] text-center">
-                            Page {currentPage} of {Math.max(1, totalPages)}
-                        </span>
-                        <button
-                            onClick={() => dispatch(navigateToPage(Math.min(totalPages, currentPage + 1)))}
-                            disabled={currentPage >= totalPages}
-                            className="p-1 hover:bg-white/10 rounded transition-colors text-slate-400 disabled:opacity-50"
-                        >
-                            <ChevronRight className="w-4 h-4" />
-                        </button>
-                    </div>
-
-                    <div className="h-6 w-px bg-white/10" />
-
-                    {/* Extract Content Button */}
+                {/* Right: Extract Content button & download icon */}
+                <div className="flex items-center gap-3">
                     <button
                         onClick={async () => {
                             const pageConfig = pages[currentPage - 1];
                             if (!pageConfig || !pdfUrl) return;
 
                             if (pageConfig.isExtracted) {
-                                // Toggle off: Remove extracted annotations and flip flag
                                 const extractedIds = annotations
                                     .filter(a => a.page === pageConfig.originalIndex && a.isExtracted)
                                     .map(a => a.id);
@@ -298,12 +417,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                                 const textContent = await page.getTextContent();
                                 const viewport = page.getViewport({ scale: 1 });
 
-                                // Group items by line (Y position)
                                 const items = textContent.items as any[];
                                 const lines: any[][] = [];
                                 const tolerance = 5;
 
-                                // Sort by Y (descending) then X (ascending) to help clustering
                                 const sortedItems = [...items].sort((a, b) => {
                                     const dy = b.transform[5] - a.transform[5];
                                     if (Math.abs(dy) > tolerance) return dy;
@@ -312,7 +429,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
 
                                 for (const item of sortedItems) {
                                     const itemY = item.transform[5];
-                                    // Find a matching line
                                     const line = lines.find(l => Math.abs(l[0].transform[5] - itemY) < tolerance);
                                     if (line) {
                                         line.push(item);
@@ -322,13 +438,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                                 }
 
                                 const newAnnotations: any[] = lines.map(lineItems => {
-                                    // Sort by X inside the line
                                     lineItems.sort((a, b) => a.transform[4] - b.transform[4]);
 
                                     const first = lineItems[0];
                                     const last = lineItems[lineItems.length - 1];
 
-                                    // Aggregate text. 
                                     let content = "";
                                     let lastX = first.transform[4];
                                     let lastWidth = first.width || 0;
@@ -336,7 +450,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                                     lineItems.forEach((item, idx) => {
                                         if (idx > 0) {
                                             const gap = item.transform[4] - (lastX + lastWidth);
-                                            // Add space if appreciable gap
                                             if (gap > 2) content += " ";
                                         }
                                         content += item.str;
@@ -344,12 +457,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                                         lastWidth = item.width || 0;
                                     });
 
-                                    // Calc bounding box
                                     const tx = first.transform;
                                     const fontSize = Math.sqrt(tx[0] * tx[0] + tx[1] * tx[1]);
                                     const x = first.transform[4];
                                     const pdfY = first.transform[5];
-                                    // Adjust Y to top-left
                                     const y = viewport.height - pdfY - fontSize;
 
                                     const width = (last.transform[4] + (last.width || 0)) - first.transform[4];
@@ -363,11 +474,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                                         page: pageConfig.originalIndex,
                                         content: content,
                                         color: '#000000',
-                                        backgroundColor: '#ffffff', // Mask text
+                                        backgroundColor: 'transparent',
                                         size: Math.round(fontSize),
                                         minWidth: width,
                                         isExtracted: true,
-                                        fontFamily: 'Arial', // Default font
+                                        fontFamily: 'Arial',
                                         textAlign: 'left',
                                         maskX: x,
                                         maskY: y,
@@ -376,7 +487,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                                     };
                                 }).filter(a => a.content.trim().length > 0);
 
-                                // Clean up existing extracted annotations for this page first to avoid duplicates
                                 const existingExtractedIds = annotations
                                     .filter(a => a.page === pageConfig.originalIndex && a.isExtracted)
                                     .map(a => a.id);
@@ -387,18 +497,17 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                                 dispatch(setAnnotations(newAnnotations));
                                 dispatch(togglePageExtraction(pageConfig.id));
 
-
-
                             } catch (error) {
                                 console.error("Failed to extract text:", error);
                                 alert("Failed to extract text from this page. See console for details.");
                             }
                         }}
                         disabled={!pdfUrl || pages.length === 0}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-xs font-medium uppercase tracking-wider ${pages[currentPage - 1]?.isExtracted
-                            ? 'bg-green-500/10 border-green-500/50 text-green-400 hover:bg-green-500/20'
-                            : 'bg-slate-800/50 border-white/5 text-slate-400 hover:text-white hover:bg-white/5'
-                            } ${!pdfUrl ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all text-xs font-semibold uppercase tracking-wider ${
+                            pages[currentPage - 1]?.isExtracted
+                                ? 'bg-green-500/10 border-green-500/50 text-green-600 dark:text-green-400 hover:bg-green-500/20'
+                                : 'bg-white dark:bg-gray-800/50 border-border text-gray-500 hover:text-gray-700 dark:hover:text-gray-200'
+                        } ${!pdfUrl ? 'opacity-40 cursor-not-allowed' : ''}`}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -407,48 +516,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                             <line x1="16" y1="17" x2="8" y2="17"></line>
                             <polyline points="10 9 9 9 8 9"></polyline>
                         </svg>
-                        {pages[currentPage - 1]?.isExtracted ? 'Extracted' : 'Extract Content'}
+                        <span>{pages[currentPage - 1]?.isExtracted ? 'Extracted' : 'Extract Content'}</span>
                     </button>
-                </div>
-
-                {/* Center: Zoom */}
-                <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg p-1 border border-white/5">
-                    <button
-                        onClick={() => dispatch(setScale(Math.max(0.2, scale - 0.1)))}
-                        className="p-1 hover:bg-white/10 rounded transition-colors text-slate-400"
-                    >
-                        <ZoomOut className="w-4 h-4" />
-                    </button>
-                    <span className="text-sm font-medium text-slate-300 w-12 text-center">
-                        {Math.round(scale * 100)}%
-                    </span>
-                    <button
-                        onClick={() => dispatch(setScale(Math.min(3.0, scale + 0.1)))}
-                        className="p-1 hover:bg-white/10 rounded transition-colors text-slate-400"
-                    >
-                        <ZoomIn className="w-4 h-4" />
-                    </button>
-                </div>
-
-                {/* Right: Extra & Sidebar Toggle */}
-                <div className="flex items-center gap-4">
-                    {/* <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-400 bg-emerald-400/10 hover:bg-emerald-400/20 rounded-lg border border-emerald-400/20 transition-colors">
-                        <AppWindow className="w-4 h-4" />
-                        <span className="hidden sm:inline">Extract Content</span>
-                    </button> */}
-
-                    <div className="h-6 w-px bg-white/10" />
 
                     <button
-                        onClick={() => dispatch(setSidebarRightOpen(!sidebarRightOpen))}
-                        className={`p-2 rounded-lg transition-colors ${sidebarRightOpen ? 'text-indigo-400 bg-white/5' : 'text-slate-400 hover:text-white'}`}
-                        title="Properties"
+                        onClick={() => pdfUrl && setShowDownloadDialog(true)}
+                        disabled={!pdfUrl}
+                        className={`p-2 rounded-lg border border-border bg-white dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-all ${
+                            !pdfUrl ? 'opacity-40 cursor-not-allowed' : ''
+                        }`}
+                        title="Download PDF File"
                     >
-                        {sidebarRightOpen ? <PanelRightClose className="w-5 h-5" /> : <PanelRightOpen className="w-5 h-5" />}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     </button>
                 </div>
             </div>
         </div>
     );
 };
-

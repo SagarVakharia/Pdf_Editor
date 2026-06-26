@@ -91,13 +91,19 @@ export const TextLayer: React.FC<TextLayerProps> = ({ pageNumber, scale }) => {
                 return (
                     <div
                         key={ann.id}
-                        className={`absolute border ${selectedAnnotationId === ann.id ? 'border-indigo-500 bg-slate-900/10' : 'border-transparent hover:border-indigo-300'} ${tool === 'select' ? 'cursor-move' : ''}`}
+                        className={`absolute border ${
+                            selectedAnnotationId === ann.id 
+                                ? 'border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-900/20' 
+                                : 'border-transparent hover:border-indigo-300/60 hover:bg-blue-50/30 dark:hover:bg-indigo-900/10'
+                        } ${tool === 'select' ? 'cursor-move' : ''} rounded-sm transition-all`}
                         style={{
                             left: ann.x * scale,
                             top: ann.y * scale,
                             fontSize: (ann.size || 16) * scale,
-                            color: ann.color,
-                            backgroundColor: ann.backgroundColor || 'transparent',
+                            color: ann.color && ann.color !== 'transparent' ? ann.color : '#000000',
+                            backgroundColor: selectedAnnotationId === ann.id 
+                                ? undefined  // let className handle selected bg
+                                : (ann.backgroundColor && ann.backgroundColor !== 'transparent' ? ann.backgroundColor : 'transparent'),
                             pointerEvents: (tool === 'select' || tool === 'text' || tool === 'erase') ? 'auto' : 'none',
                             lineHeight: 1.2,
                             minWidth: ann.minWidth ? ann.minWidth * scale : 'auto',

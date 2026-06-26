@@ -60,10 +60,10 @@ export const LeftSidebar: React.FC = () => {
     if (!sidebarLeftOpen) return null;
 
     return (
-        <div className="absolute md:relative w-64 h-full bg-sidebar border-r border-white/10 flex flex-col z-20 transition-all shadow-2xl md:shadow-none">
+        <div className="absolute md:relative w-64 h-full bg-sidebar border-r border-border flex flex-col z-20 transition-all shadow-lg md:shadow-none">
             {/* Header */}
-            <div className="flex border-b border-white/5 py-3 px-4">
-                <h3 className="text-sm font-semibold text-white">Pages</h3>
+            <div className="flex border-b border-border py-3 px-4">
+                <h3 className="text-sm font-semibold text-text-main">Pages</h3>
             </div>
 
             {/* Content */}
