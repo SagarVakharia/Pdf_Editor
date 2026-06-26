@@ -46,11 +46,11 @@ interface ToolbarProps {
 }
 
 const DEFAULT_STAMPS = [
-    { text: 'APPROVED', color: '#22c55e' }, // Green
-    { text: 'REJECTED', color: '#ef4444' }, // Red
-    { text: 'CONFIDENTIAL', color: '#eab308' }, // Yellow/Orange
-    { text: 'DRAFT', color: '#64748b' }, // Slate
-    { text: 'SIGN HERE', color: '#3b82f6' } // Blue
+    { text: 'Draft', color: '#64748b' },
+    { text: 'Approved', color: '#22c55e' },
+    { text: 'Confidential', color: '#eab308' },
+    { text: 'Final', color: '#3b82f6' },
+    { text: 'Void', color: '#ef4444' }
 ];
 
 export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
@@ -377,6 +377,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                                         {stamp.text}
                                     </button>
                                 ))}
+                                <div className="border-t border-border my-1" />
+                                <button
+                                    onClick={() => {
+                                        const text = window.prompt("Enter custom stamp text:");
+                                        if (text && text.trim()) {
+                                            handleStampSelect({ text: text.trim().toUpperCase(), color: '#8b5cf6' });
+                                        } else {
+                                            setStampDropdownOpen(false);
+                                        }
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm font-semibold hover:bg-surface transition-colors flex items-center gap-2 text-indigo-500"
+                                >
+                                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                                    Custom...
+                                </button>
                             </div>
                         )}
                     </div>
