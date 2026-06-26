@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
 import { addAnnotation, setSelectedAnnotationId, setTool, deleteAnnotation, updateAnnotationProperties } from '../../../store/slices/canvasSlice';
@@ -14,12 +14,15 @@ interface ImageLayerProps {
 export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, scale }) => {
     const dispatch = useDispatch();
     const { tool, annotations, selectedAnnotationId } = useSelector((state: RootState) => state.canvas);
+    const [hoveredId, setHoveredId] = useState<string | null>(null);
 
     // Filter image annotations
     const pageAnnotations = annotations.filter(a => a.page === pageNumber && a.type === 'image');
 
     const handleMouseDown = (e: React.MouseEvent, ann: typeof annotations[0]) => {
-        if (tool !== 'select') return;
+        const target = e.target as HTMLElement;
+        if (target.closest('[data-delete-btn]')) return;
+
         e.stopPropagation();
         e.preventDefault();
         dispatch(setSelectedAnnotationId(ann.id));
@@ -60,20 +63,18 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, scale }) => 
                 const url = URL.createObjectURL(file);
                 const id = nanoid();
 
-                // We'd ideally get image dimensions here, but defaulting for now
                 dispatch(addAnnotation({
                     id,
                     type: 'image',
                     page: pageNumber,
                     x,
                     y,
-                    content: url, // Using content field for URL
+                    content: url,
                     opacity: 1,
-                    size: 100 // Using size for width
+                    size: 100
                 }));
 
                 dispatch(setSelectedAnnotationId(id));
-                // Optional: switch back to select tool after placement?
                 dispatch(setTool('select'));
             }
         };
@@ -92,7 +93,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, scale }) => 
 
     return (
         <div className={`absolute inset-0 z-20 ${tool === 'image' ? 'cursor-copy' : 'pointer-events-none'}`}>
-            {/* Interaction Layer */}
+            {/* Interaction Layer for placing new image */}
             {tool === 'image' && (
                 <div
                     className="absolute inset-0"
@@ -101,36 +102,65 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, scale }) => 
             )}
 
             {/* Rendered Images */}
-            {pageAnnotations.map(ann => (
-                <div
-                    key={ann.id}
-                    className={`absolute border ${selectedAnnotationId === ann.id ? 'border-indigo-500' : 'border-transparent'} ${tool === 'select' ? 'cursor-move' : ''}`}
-                    style={{
-                        left: ann.x * scale,
-                        top: ann.y * scale,
-                        width: (ann.size || 100) * scale,
-                        opacity: ann.opacity ?? 1,
-                        pointerEvents: (tool === 'select' || tool === 'image' || tool === 'erase') ? 'auto' : 'none'
-                    }}
-                    onMouseDown={(e) => handleMouseDown(e, ann)}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        if (tool === 'erase') {
-                            dispatch(deleteAnnotation(ann.id));
-                            return;
-                        }
-                        dispatch(setSelectedAnnotationId(ann.id));
-                    }}
-                >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                        src={ann.content}
-                        alt="annotation"
-                        className="w-full h-auto pointer-events-none select-none"
-                        draggable={false}
-                    />
-                </div>
-            ))}
+            {pageAnnotations.map(ann => {
+                const isSelected = selectedAnnotationId === ann.id;
+                const isHovered = hoveredId === ann.id;
+                const showControls = isSelected || isHovered;
+
+                return (
+                    <div
+                        key={ann.id}
+                        className={`absolute border ${isSelected ? 'border-indigo-500 ring-2 ring-indigo-500/30' : 'border-transparent hover:border-indigo-300'} cursor-move`}
+                        style={{
+                            left: ann.x * scale,
+                            top: ann.y * scale,
+                            width: (ann.size || 100) * scale,
+                            opacity: ann.opacity ?? 1,
+                            pointerEvents: 'auto'
+                        }}
+                        onMouseEnter={() => setHoveredId(ann.id)}
+                        onMouseLeave={() => setHoveredId(null)}
+                        onMouseDown={(e) => handleMouseDown(e, ann)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (tool === 'erase') {
+                                dispatch(deleteAnnotation(ann.id));
+                                return;
+                            }
+                            dispatch(setSelectedAnnotationId(ann.id));
+                        }}
+                    >
+                        {/* Delete Button */}
+                        {showControls && (
+                            <button
+                                data-delete-btn
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    dispatch(deleteAnnotation(ann.id));
+                                }}
+                                onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                }}
+                                className="absolute -top-3 -right-3 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition-all duration-150 z-50 text-xs leading-none"
+                                style={{ fontSize: '10px', lineHeight: '1', pointerEvents: 'auto' }}
+                                title="Delete"
+                            >
+                                ✕
+                            </button>
+                        )}
+
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                            src={ann.content}
+                            alt="annotation"
+                            className="w-full h-auto pointer-events-none select-none"
+                            draggable={false}
+                        />
+                    </div>
+                );
+            })}
         </div>
     );
 };

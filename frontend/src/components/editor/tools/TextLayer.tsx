@@ -16,6 +16,7 @@ export const TextLayer: React.FC<TextLayerProps> = ({ pageNumber, scale }) => {
     const { tool, annotations, selectedAnnotationId } = useSelector((state: RootState) => state.canvas);
     const containerRef = useRef<HTMLDivElement>(null);
     const [pageWidth, setPageWidth] = useState(595);
+    const [hoveredId, setHoveredId] = useState<string | null>(null);
 
     // Keep page width updated
     useEffect(() => {
@@ -28,9 +29,10 @@ export const TextLayer: React.FC<TextLayerProps> = ({ pageNumber, scale }) => {
     const pageAnnotations = annotations.filter(a => a.page === pageNumber && a.type === 'text');
 
     const handleMouseDown = (e: React.MouseEvent, ann: typeof annotations[0]) => {
-        if (tool !== 'select') return;
+        // Allow dragging regardless of tool (but not when clicking delete or typing)
         const target = e.target as HTMLElement;
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return; // Ignore drag actions when typing
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+        if (target.closest('[data-delete-btn]')) return;
 
         e.stopPropagation();
         e.preventDefault();
@@ -88,23 +90,27 @@ export const TextLayer: React.FC<TextLayerProps> = ({ pageNumber, scale }) => {
             {/* 2. Render actual text overlay (only if not deleted) */}
             {pageAnnotations.filter(ann => !ann.isDeleted).map((ann) => {
                 const maxW = Math.max(100, pageWidth - ann.x);
+                const isSelected = selectedAnnotationId === ann.id;
+                const isHovered = hoveredId === ann.id;
+                const showControls = isSelected || isHovered;
+
                 return (
                     <div
                         key={ann.id}
-                        className={`absolute border ${
-                            selectedAnnotationId === ann.id 
-                                ? 'border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-900/20' 
-                                : 'border-transparent hover:border-indigo-300/60 hover:bg-blue-50/30 dark:hover:bg-indigo-900/10'
-                        } ${tool === 'select' ? 'cursor-move' : ''} rounded-sm transition-all`}
+                        className={`absolute group ${
+                            isSelected
+                                ? 'border border-indigo-500 ring-2 ring-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-900/20'
+                                : 'border border-transparent hover:border-indigo-300/60 hover:bg-blue-50/30 dark:hover:bg-indigo-900/10'
+                        } cursor-move rounded-sm transition-colors`}
                         style={{
                             left: ann.x * scale,
                             top: ann.y * scale,
                             fontSize: (ann.size || 16) * scale,
                             color: ann.color && ann.color !== 'transparent' ? ann.color : '#000000',
-                            backgroundColor: selectedAnnotationId === ann.id 
+                            backgroundColor: isSelected
                                 ? undefined  // let className handle selected bg
                                 : (ann.backgroundColor && ann.backgroundColor !== 'transparent' ? ann.backgroundColor : 'transparent'),
-                            pointerEvents: (tool === 'select' || tool === 'text' || tool === 'erase') ? 'auto' : 'none',
+                            pointerEvents: tool === 'erase' ? 'auto' : 'auto',
                             lineHeight: 1.2,
                             minWidth: ann.minWidth ? ann.minWidth * scale : 'auto',
                             minHeight: ann.minHeight ? ann.minHeight * scale : 'auto',
@@ -118,6 +124,8 @@ export const TextLayer: React.FC<TextLayerProps> = ({ pageNumber, scale }) => {
                             padding: '2px',
                             zIndex: 10
                         }}
+                        onMouseEnter={() => setHoveredId(ann.id)}
+                        onMouseLeave={() => setHoveredId(null)}
                         onMouseDown={(e) => handleMouseDown(e, ann)}
                         onClick={(e) => {
                             e.stopPropagation();
@@ -125,12 +133,31 @@ export const TextLayer: React.FC<TextLayerProps> = ({ pageNumber, scale }) => {
                                 dispatch(deleteAnnotation(ann.id));
                                 return;
                             }
-                            if (tool === 'text' || tool === 'select') {
-                                dispatch(setSelectedAnnotationId(ann.id));
-                            }
+                            dispatch(setSelectedAnnotationId(ann.id));
                         }}
                     >
-                        {selectedAnnotationId === ann.id ? (
+                        {/* Delete Button */}
+                        {showControls && (
+                            <button
+                                data-delete-btn
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    dispatch(deleteAnnotation(ann.id));
+                                }}
+                                onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                }}
+                                className="absolute -top-3 -right-3 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition-all duration-150 z-50 text-xs leading-none"
+                                style={{ fontSize: '10px', lineHeight: '1', pointerEvents: 'auto' }}
+                                title="Delete"
+                            >
+                                ✕
+                            </button>
+                        )}
+
+                        {isSelected ? (
                             <textarea
                                 className="bg-transparent outline-none w-full border-0 p-0 m-0 resize-none overflow-hidden"
                                 value={ann.content || ''}

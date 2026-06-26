@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
 import { setSelectedAnnotationId, deleteAnnotation, updateAnnotationProperties } from '../../../store/slices/canvasSlice';
@@ -14,13 +14,16 @@ export const SignLayer: React.FC<SignLayerProps> = ({ pageNumber, scale }) => {
     const dispatch = useDispatch();
     const { tool, annotations, selectedAnnotationId } = useSelector((state: RootState) => state.canvas);
     const containerRef = useRef<HTMLDivElement>(null);
+    const [hoveredId, setHoveredId] = useState<string | null>(null);
 
     const pageAnnotations = annotations.filter(
         (a) => a.page === pageNumber && a.type === 'sign' && !a.isDeleted
     );
 
     const handleMouseDown = (e: React.MouseEvent, ann: typeof annotations[0]) => {
-        if (tool !== 'select') return;
+        const target = e.target as HTMLElement;
+        if (target.closest('[data-delete-btn]')) return;
+
         e.stopPropagation();
         e.preventDefault();
         dispatch(setSelectedAnnotationId(ann.id));
@@ -58,10 +61,15 @@ export const SignLayer: React.FC<SignLayerProps> = ({ pageNumber, scale }) => {
             {pageAnnotations.map((ann) => {
                 const width = (ann.minWidth || 100) * scale;
                 const height = (ann.minHeight || 50) * scale;
+                const isSelected = selectedAnnotationId === ann.id;
+                const isHovered = hoveredId === ann.id;
+                const showControls = isSelected || isHovered;
 
                 return (
                     <div
                         key={ann.id}
+                        onMouseEnter={() => setHoveredId(ann.id)}
+                        onMouseLeave={() => setHoveredId(null)}
                         onMouseDown={(e) => handleMouseDown(e, ann)}
                         onClick={(e) => {
                             e.stopPropagation();
@@ -71,11 +79,11 @@ export const SignLayer: React.FC<SignLayerProps> = ({ pageNumber, scale }) => {
                             }
                             dispatch(setSelectedAnnotationId(ann.id));
                         }}
-                        className={`absolute flex items-center justify-center transition-all ${
-                            selectedAnnotationId === ann.id
+                        className={`absolute flex items-center justify-center cursor-move transition-all ${
+                            isSelected
                                 ? 'border border-dashed border-indigo-500 ring-2 ring-indigo-500/20'
                                 : 'hover:border hover:border-dashed hover:border-gray-400'
-                        } ${tool === 'select' ? 'cursor-move pointer-events-auto' : tool === 'erase' ? 'cursor-pointer pointer-events-auto' : ''}`}
+                        } pointer-events-auto`}
                         style={{
                             left: ann.x * scale,
                             top: ann.y * scale,
@@ -83,14 +91,35 @@ export const SignLayer: React.FC<SignLayerProps> = ({ pageNumber, scale }) => {
                             height: height
                         }}
                     >
+                        {/* Delete Button */}
+                        {showControls && (
+                            <button
+                                data-delete-btn
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    dispatch(deleteAnnotation(ann.id));
+                                }}
+                                onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                }}
+                                className="absolute -top-3 -right-3 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition-all duration-150 z-50 text-xs leading-none"
+                                style={{ fontSize: '10px', lineHeight: '1', pointerEvents: 'auto' }}
+                                title="Delete"
+                            >
+                                ✕
+                            </button>
+                        )}
+
                         {ann.path ? (
-                            <svg 
-                                width="100%" 
-                                height="100%" 
+                            <svg
+                                width="100%"
+                                height="100%"
                                 viewBox={`0 0 ${ann.minWidth} ${ann.minHeight}`}
                                 style={{ pointerEvents: 'none' }}
                             >
-                                <path 
+                                <path
                                     d={`M ${ann.path[0]?.x} ${ann.path[0]?.y} ` + ann.path.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ')}
                                     stroke={ann.color || '#000000'}
                                     strokeWidth={ann.size || 2}
