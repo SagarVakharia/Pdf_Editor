@@ -7,7 +7,8 @@ import { setActiveRightTab, deleteAnnotation, updateAnnotationProperties, setSel
 import {
     Sliders, Layers, Trash2, FileText,
     AlignLeft, AlignCenter, AlignRight,
-    Bold, Italic, ChevronDown
+    Bold, Italic, ChevronDown,
+    CheckCircle, AlertCircle, CheckSquare, XCircle, Upload
 } from 'lucide-react';
 
 export const RightSidebar: React.FC = () => {
@@ -258,6 +259,49 @@ export const RightSidebar: React.FC = () => {
                                             <span className="text-xs font-semibold text-text-main w-10 text-center">
                                                 {Math.round((selectedAnnotation.opacity ?? 1.0) * 100)}%
                                             </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Stamp Content */}
+                            {selectedAnnotation.type === 'stamp' && (
+                                <div className="space-y-6">
+                                    <div className="space-y-3">
+                                        <label className="text-xs font-semibold text-text-muted uppercase tracking-wider block">Select Stamp</label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {[
+                                                { text: 'Draft', color: '#64748b', icon: <FileText className="w-5 h-5 mb-1" /> },
+                                                { text: 'Approved', color: '#22c55e', icon: <CheckCircle className="w-5 h-5 mb-1" /> },
+                                                { text: 'Confidential', color: '#eab308', icon: <AlertCircle className="w-5 h-5 mb-1" /> },
+                                                { text: 'Final', color: '#3b82f6', icon: <CheckSquare className="w-5 h-5 mb-1" /> },
+                                                { text: 'Void', color: '#ef4444', icon: <XCircle className="w-5 h-5 mb-1" /> },
+                                                { text: 'Custom', color: '#8b5cf6', icon: <Upload className="w-5 h-5 mb-1" /> }
+                                            ].map((stamp, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => {
+                                                        if (stamp.text === 'Custom') {
+                                                            const text = window.prompt("Enter custom stamp text:");
+                                                            if (text && text.trim()) {
+                                                                handleChange('content', text.trim().toUpperCase());
+                                                                handleChange('color', stamp.color);
+                                                            }
+                                                        } else {
+                                                            handleChange('content', stamp.text.toUpperCase());
+                                                            handleChange('color', stamp.color);
+                                                        }
+                                                    }}
+                                                    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${
+                                                        selectedAnnotation.content?.toUpperCase() === stamp.text.toUpperCase()
+                                                            ? 'border-indigo-500 bg-indigo-50/10 dark:bg-indigo-900/20 text-indigo-400'
+                                                            : 'border-border hover:border-text-muted hover:bg-surface text-text-muted'
+                                                    }`}
+                                                >
+                                                    {stamp.icon}
+                                                    <span className="text-xs font-medium">{stamp.text}</span>
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>
