@@ -6,7 +6,7 @@ import { RootState } from '../../store/store';
 import { setPdfUrl } from '../../store/slices/canvasSlice';
 import { Toolbar } from './Toolbar';
 // import { PDFViewer } from './PDFViewer';
-import { Settings, FileText } from 'lucide-react';
+
 import dynamic from 'next/dynamic';
 
 const PDFViewer = dynamic(() => import('./PDFViewer').then(mod => mod.PDFViewer), {

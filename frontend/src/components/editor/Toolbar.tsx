@@ -28,7 +28,6 @@ import {
     X,
     FolderOpen,
     Save,
-    Settings,
     Moon,
     Sun,
     PanelLeftClose,
@@ -463,13 +462,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                         <span className="hidden sm:inline">Save</span>
                     </button>
 
-                    {/* Settings Cog */}
-                    <button
-                        className="p-2 rounded-full text-text-muted hover:text-text-main hover:bg-surface transition-all hover:rotate-180 duration-500 active:scale-95"
-                        title="Settings"
-                    >
-                        <Settings className="w-5 h-5" />
-                    </button>
+
 
                     {/* Theme Switcher */}
                     <button
