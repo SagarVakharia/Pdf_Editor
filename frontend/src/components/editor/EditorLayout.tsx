@@ -68,12 +68,12 @@ export const EditorLayout: React.FC = () => {
             <Toolbar onUpload={handleUpload} />
 
             {/* Main Content Area */}
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex overflow-x-auto overflow-y-hidden no-scrollbar">
                 {/* Left Sidebar */}
                 <LeftSidebar />
 
                 {/* Center Canvas */}
-                <div className="flex-1 overflow-auto bg-[var(--background)] relative scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent p-8 flex justify-center">
+                <div className="flex-1 shrink-0 min-w-[100vw] md:min-w-0 overflow-auto bg-[var(--background)] relative scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
                     {/* Watermark Overlay */}
                     <div className="pointer-events-none fixed inset-0 flex flex-wrap content-center justify-center gap-16 overflow-hidden z-0 opacity-[0.03] select-none">
                          {Array.from({ length: 30 }).map((_, i) => (

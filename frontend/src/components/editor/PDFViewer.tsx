@@ -361,8 +361,8 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
     }
 
     return (
-        <div className="flex justify-center p-8 min-h-full bg-background/50">
-            <div className="shadow-2xl">
+        <div className="min-h-full bg-background/50 p-4 sm:p-8">
+            <div className="shadow-2xl mx-auto w-fit">
                 <Document
                     file={file}
                     onLoadSuccess={onDocumentLoadSuccess}

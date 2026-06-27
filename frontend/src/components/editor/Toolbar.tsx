@@ -15,8 +15,7 @@ import {
     toggleTheme,
     setActiveStamp,
     setActiveSignature,
-    setActiveShapeType,
-    deleteAnnotation
+    setActiveShapeType
 } from '../../store/slices/canvasSlice';
 import { generatePDF } from '../../utils/pdfGenerator';
 import { SignatureModal } from './SignatureModal';
@@ -56,7 +55,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
     const dispatch = useDispatch();
     const {
         scale, tool, currentPage, totalPages, sidebarLeftOpen, sidebarRightOpen,
-        history, pdfUrl, pages, annotations, theme, activeStamp, activeShapeType, selectedAnnotationId
+        history, pdfUrl, pages, annotations, theme, activeStamp, activeShapeType
     } = useSelector((state: RootState) => state.canvas);
 
     const [
@@ -91,7 +90,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
 
             // Delete selected annotation
             if ((e.key === 'Delete' || e.key === 'Backspace')) {
-                const state = (window as any).__REDUX_STATE__;
                 e.preventDefault();
                 window.dispatchEvent(new CustomEvent('delete-selected'));
                 return;
@@ -104,7 +102,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
             };
             if (shortcuts[e.key]) {
                 e.preventDefault();
-                dispatch(setTool(shortcuts[e.key] as any));
+                dispatch(setTool(shortcuts[e.key] as RootState['canvas']['tool']));
             }
         };
         document.addEventListener('keydown', handleKeyDown);
@@ -129,7 +127,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
         if (!pdfUrl) return;
         try {
             const pdfBytes = await generatePDF(pdfUrl, pages, annotations);
-            const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
+            const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
@@ -226,7 +224,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                             { type: 'star', label: 'Star', icon: <polygon points="12,2 15,9 22,9 16,14 18,21 12,17 6,21 8,14 2,9 9,9"/> },
                             { type: 'diamond', label: 'Diamond', icon: <polygon points="12,2 22,12 12,22 2,12"/> },
                         ].map(({ type, label, icon }) => (
-                            <button key={type} onClick={() => { dispatch(setActiveShapeType(type as any)); dispatch(setTool('shape')); setShapeDropdownOpen(false); }} className={`w-full px-3 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-surface transition-colors ${activeShapeType === type && ['shape','rectangle','circle','triangle','star','diamond'].includes(activeTool) ? 'text-indigo-600 dark:text-indigo-400' : 'text-text-main'}`}>
+                            <button key={type} onClick={() => { dispatch(setActiveShapeType(type as RootState['canvas']['activeShapeType'])); dispatch(setTool('shape')); setShapeDropdownOpen(false); }} className={`w-full px-3 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-surface transition-colors ${activeShapeType === type && ['shape','rectangle','circle','triangle','star','diamond'].includes(activeTool) ? 'text-indigo-600 dark:text-indigo-400' : 'text-text-main'}`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icon}</svg>
                                 {label}
                             </button>
@@ -237,7 +235,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                             { type: 'line', label: 'Straight Line', icon: <line x1="4" y1="20" x2="20" y2="4"/> },
                             { type: 'arrow', label: 'Arrow', icon: <><line x1="4" y1="20" x2="20" y2="4"/><polyline points="14 4 20 4 20 10"/></> },
                         ].map(({ type, label, icon }) => (
-                            <button key={type} onClick={() => { dispatch(setActiveShapeType(type as any)); dispatch(setTool('shape')); setShapeDropdownOpen(false); }} className={`w-full px-3 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-surface transition-colors ${activeShapeType === type && ['shape','line','arrow'].includes(activeTool) ? 'text-indigo-600 dark:text-indigo-400' : 'text-text-main'}`}>
+                            <button key={type} onClick={() => { dispatch(setActiveShapeType(type as RootState['canvas']['activeShapeType'])); dispatch(setTool('shape')); setShapeDropdownOpen(false); }} className={`w-full px-3 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-surface transition-colors ${activeShapeType === type && ['shape','line','arrow'].includes(activeTool) ? 'text-indigo-600 dark:text-indigo-400' : 'text-text-main'}`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{icon}</svg>
                                 {label}
                             </button>
@@ -285,9 +283,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                 isOpen={isSignatureModalOpen}
                 onClose={() => setIsSignatureModalOpen(false)}
                 onSave={(sig) => {
-                    const adapted: any = sig.imageUrl
-                        ? { type: 'draw', content: sig.imageUrl, width: sig.width, height: sig.height }
-                        : { type: sig.type, path: sig.path, content: sig.content, width: sig.width, height: sig.height };
+                    const adapted = sig.imageUrl
+                        ? { type: 'draw' as const, content: sig.imageUrl, width: sig.width, height: sig.height }
+                        : { type: sig.type as 'draw' | 'text', path: sig.path, content: sig.content, width: sig.width, height: sig.height };
                     dispatch(setActiveSignature(adapted));
                     dispatch(setTool('sign'));
                     setIsSignatureModalOpen(false);

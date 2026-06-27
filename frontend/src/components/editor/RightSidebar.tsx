@@ -35,7 +35,7 @@ export const RightSidebar: React.FC = () => {
     };
 
     return (
-        <div className="absolute right-0 md:relative w-80 h-full bg-sidebar border-l border-border flex flex-col z-20 transition-all shadow-2xl md:shadow-none bg-sidebar text-text-main">
+        <div className="shrink-0 w-[85vw] max-w-sm md:w-80 h-full bg-sidebar border-l border-border flex flex-col z-20 transition-all shadow-2xl md:shadow-none text-text-main">
             {/* Tabs */}
             <div className="flex border-b border-border bg-sidebar/50">
                 <button
