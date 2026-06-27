@@ -302,34 +302,34 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
     if (!file) {
         return (
             <div 
-                className="flex flex-col items-center justify-center h-full text-text-muted py-12 px-4"
+                className="flex flex-col items-center justify-center h-full text-text-muted py-6 sm:py-12 px-4 w-full"
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
             >
                 <div 
                     onClick={onUpload}
-                    className="bg-sidebar p-8 rounded-2xl border border-border shadow-2xl mb-8 flex flex-col items-center cursor-pointer hover:border-indigo-500/30 hover:bg-surface/50 transition-all max-w-lg w-full group"
+                    className="bg-sidebar p-5 sm:p-8 rounded-2xl border border-border shadow-2xl mb-6 sm:mb-8 flex flex-col items-center cursor-pointer hover:border-indigo-500/30 hover:bg-surface/50 transition-all max-w-lg w-full group"
                 >
-                    <div className="w-24 h-24 bg-surface rounded-2xl flex items-center justify-center mb-6 border border-border shadow-[0_0_30px_rgba(99,102,241,0.15)] group-hover:border-indigo-500/30 group-hover:scale-105 transition-all">
-                        <FileText className="w-12 h-12 text-primary opacity-90 drop-shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-surface rounded-2xl flex items-center justify-center mb-5 sm:mb-6 border border-border shadow-[0_0_30px_rgba(99,102,241,0.15)] group-hover:border-indigo-500/30 group-hover:scale-105 transition-all">
+                        <FileText className="w-10 h-10 sm:w-12 sm:h-12 text-primary opacity-90 drop-shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
                     </div>
-                    <div className="text-center">
-                        <h3 className="text-2xl font-bold text-text-main mb-2 tracking-tight">No PDF Loaded</h3>
-                        <p className="text-sm text-text-muted max-w-xs mx-auto mb-8 font-medium">
+                    <div className="text-center w-full">
+                        <h3 className="text-xl sm:text-2xl font-bold text-text-main mb-2 tracking-tight">No PDF Loaded</h3>
+                        <p className="text-xs sm:text-sm text-text-muted max-w-xs mx-auto mb-6 sm:mb-8 font-medium">
                             Click here to browse or drag and drop a PDF file to begin editing.
                         </p>
 
-                        <div className="flex items-center gap-3 justify-center">
-                            <span className="flex items-center gap-2 px-4 py-2 bg-surface border border-border rounded-lg text-sm font-medium transition-colors hover:text-indigo-500 text-text-main">
-                                <FileText className="w-4 h-4 text-indigo-500" />
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-center">
+                            <span className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-surface border border-border rounded-lg text-xs sm:text-sm font-medium transition-colors hover:text-indigo-500 text-text-main">
+                                <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500" />
                                 Edit Text
                             </span>
-                            <span className="flex items-center gap-2 px-4 py-2 bg-surface border border-border rounded-lg text-sm font-medium transition-colors hover:text-purple-500 text-text-main">
-                                <ImageIcon className="w-4 h-4 text-purple-500" />
+                            <span className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-surface border border-border rounded-lg text-xs sm:text-sm font-medium transition-colors hover:text-purple-500 text-text-main">
+                                <ImageIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500" />
                                 Add Images
                             </span>
-                            <span className="flex items-center gap-2 px-4 py-2 bg-surface border border-border rounded-lg text-sm font-medium transition-colors hover:text-emerald-500 text-text-main">
-                                <PenTool className="w-4 h-4 text-emerald-500" />
+                            <span className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-surface border border-border rounded-lg text-xs sm:text-sm font-medium transition-colors hover:text-emerald-500 text-text-main">
+                                <PenTool className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500" />
                                 Sign PDFs
                             </span>
                         </div>
@@ -337,20 +337,20 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
                 </div>
 
                 {/* URL Loader Section */}
-                <div className="bg-sidebar p-6 rounded-2xl border border-border shadow-2xl max-w-lg w-full">
-                    <h4 className="text-sm font-semibold text-text-main mb-3">Or load a document from URL</h4>
-                    <div className="flex gap-2">
+                <div className="bg-sidebar p-5 sm:p-6 rounded-2xl border border-border shadow-2xl max-w-lg w-full">
+                    <h4 className="text-xs sm:text-sm font-semibold text-text-main mb-2 sm:mb-3">Or load a document from URL</h4>
+                    <div className="flex flex-col sm:flex-row gap-2">
                         <input
                             type="text"
                             placeholder="https://example.com/document.pdf"
                             value={urlInput}
                             onChange={(e) => setUrlInput(e.target.value)}
-                            className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-text-main focus:outline-none focus:border-indigo-500 transition-colors"
+                            className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-text-main focus:outline-none focus:border-indigo-500 transition-colors w-full"
                         />
                         <button
                             onClick={handleLoadUrl}
                             disabled={isLoadingUrl}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-text-main rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-text-main rounded-lg text-sm font-medium transition-colors whitespace-nowrap w-full sm:w-auto"
                         >
                             {isLoadingUrl ? 'Loading...' : 'Load'}
                         </button>
