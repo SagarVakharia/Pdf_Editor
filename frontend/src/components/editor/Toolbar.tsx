@@ -234,23 +234,31 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
             )}
 
             {/* Top Main Toolbar */}
-            <div className="h-16 flex items-center justify-between px-4 gap-4 bg-sidebar">
-                {/* Logo & Sidebar toggle */}
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => dispatch(setSidebarLeftOpen(!sidebarLeftOpen))}
-                        className="p-2 rounded-lg text-text-muted hover:text-text-main hover:bg-surface transition-all active:scale-95"
-                        title="Toggle Page Navigation"
-                    >
-                        {sidebarLeftOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
-                    </button>
-                    <span className="font-bold text-lg bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent select-none whitespace-nowrap">
-                        PDF Editor
-                    </span>
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between w-full bg-sidebar lg:h-16 relative">
+                {/* Top Row: Logo & Actions */}
+                <div className="flex items-center justify-between px-2 lg:px-4 h-[3.5rem] lg:h-full w-full lg:w-auto">
+                    {/* Logo & Sidebar toggle */}
+                    <div className="flex items-center gap-1.5 lg:gap-3 shrink-0">
+                        <button
+                            onClick={() => dispatch(setSidebarLeftOpen(!sidebarLeftOpen))}
+                            className="p-1.5 lg:p-2 rounded-lg text-text-muted hover:text-text-main hover:bg-surface transition-all active:scale-95"
+                            title="Toggle Page Navigation"
+                        >
+                            {sidebarLeftOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
+                        </button>
+                        <span className="font-bold text-base lg:text-lg bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent select-none whitespace-nowrap">
+                            PDF <span className="hidden sm:inline">Editor</span>
+                        </span>
+                    </div>
+
+                    {/* Right Side Actions for Mobile - we'll keep them in the same container but split layout */}
+                    <div className="flex lg:hidden items-center justify-end gap-1 shrink-0 overflow-x-auto no-scrollbar">
+                        {/* Duplicate actions for mobile to ensure proper flex structure, or render a component. Let's just use CSS hiding */}
+                    </div>
                 </div>
 
                 {/* Center Toolbar Area - 12 tools */}
-                <div className="hidden lg:flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 justify-center px-4">
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar w-full px-1 lg:px-4 py-1.5 lg:py-0 border-t border-border/40 lg:border-t-0 lg:absolute lg:left-1/2 lg:-translate-x-1/2 lg:h-16 lg:w-auto">
                     {/* 1. Select Tool */}
                     {renderToolButton('select', 'Select (V)', (
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="m4 4 7.07 16.97 2.51-7.39 7.39-2.51L4 4z"></path><path d="m13 13 6 6"></path></svg>
@@ -409,9 +417,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                 </div>
 
                 {/* Right Side Actions: Undo/Redo, Open, Save, Cog, Switcher, Panel */}
-                <div className="flex items-center gap-1.5 md:gap-2.5">
+                <div className="absolute right-2 lg:right-4 top-2 lg:top-1/2 lg:-translate-y-1/2 flex items-center justify-end gap-1 lg:gap-2.5 shrink-0 overflow-x-auto no-scrollbar h-10 lg:h-auto max-w-[65%] lg:max-w-none">
                     {/* Undo/Redo */}
-                    <div className="flex bg-surface rounded-lg p-0.5 border border-border">
+                    <div className="flex bg-surface rounded-lg p-0.5 border border-border shrink-0">
                         <button
                             onClick={() => dispatch(undo())}
                             disabled={!canUndo}
@@ -441,7 +449,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                     {/* Open Button */}
                     <button
                         onClick={onUpload}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-sidebar rounded-lg text-sm font-semibold hover:bg-surface shadow-sm border border-border text-text-main hover:scale-105 active:scale-95 transition-all duration-200"
+                        className="flex items-center gap-1.5 px-2 lg:px-3 py-1.5 lg:py-2 bg-sidebar rounded-lg text-sm font-semibold hover:bg-surface shadow-sm border border-border text-text-main hover:scale-105 active:scale-95 transition-all duration-200 shrink-0"
+                        title="Open PDF"
                     >
                         <FolderOpen className="w-4 h-4 text-indigo-500" />
                         <span className="hidden sm:inline">Open</span>
@@ -451,10 +460,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                     <button
                         onClick={() => pdfUrl && setShowDownloadDialog(true)}
                         disabled={!pdfUrl}
-                        className={`flex items-center gap-1.5 px-4.5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 text-text-main select-none ${
+                        className={`flex items-center gap-1.5 px-2 lg:px-4.5 py-1.5 lg:py-2 rounded-lg text-sm font-semibold transition-all duration-200 text-text-main select-none shrink-0 ${
                             pdfUrl
                                 ? 'bg-gradient-to-br from-indigo-500 to-purple-600 hover:scale-105 active:scale-95 shadow-md shadow-indigo-500/20 cursor-pointer'
-                                : 'bg-surface opacity-50 text-text-muted opacity-50 border border-border cursor-not-allowed'
+                                : 'bg-surface opacity-50 text-text-muted border border-border cursor-not-allowed'
                         }`}
                         title="Save PDF"
                     >
@@ -462,12 +471,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                         <span className="hidden sm:inline">Save</span>
                     </button>
 
-
-
                     {/* Theme Switcher */}
                     <button
                         onClick={() => dispatch(toggleTheme())}
-                        className="p-2 rounded-full text-text-muted hover:text-text-main hover:bg-surface transition-all active:scale-95"
+                        className="p-1.5 lg:p-2 rounded-full text-text-muted hover:text-text-main hover:bg-surface transition-all active:scale-95 shrink-0"
                         title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
                     >
                         {theme === 'light' ? <Moon className="w-5 h-5 text-indigo-500" /> : <Sun className="w-5 h-5 text-yellow-500" />}
@@ -476,7 +483,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                     {/* Right Panel Toggle */}
                     <button
                         onClick={() => dispatch(setSidebarRightOpen(!sidebarRightOpen))}
-                        className="p-2 rounded-lg text-text-muted hover:text-text-main hover:bg-surface transition-all active:scale-95"
+                        className="p-1.5 lg:p-2 rounded-lg text-text-muted hover:text-text-main hover:bg-surface transition-all active:scale-95 shrink-0"
                         title="Toggle Properties Panel"
                     >
                         {sidebarRightOpen ? <PanelRightClose className="w-5 h-5" /> : <PanelRightOpen className="w-5 h-5" />}
@@ -485,9 +492,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
             </div>
 
             {/* Sub-header / Controls Bar */}
-            <div className="h-12 bg-sidebar border-t border-border flex items-center justify-between px-4 relative">
+            <div className="flex flex-row overflow-x-auto no-scrollbar min-h-[3rem] bg-sidebar border-t border-border items-center justify-start sm:justify-between px-2 sm:px-4 py-1.5 sm:py-0 gap-3 sm:gap-0 relative w-full">
                 {/* Left: Page Navigation */}
-                <div className="flex items-center gap-2 bg-sidebar rounded-lg p-0.5 border border-border shadow-sm">
+                <div className="flex items-center gap-2 bg-sidebar rounded-lg p-0.5 border border-border shadow-sm shrink-0">
                     <button
                         onClick={() => dispatch(navigateToPage(Math.max(1, currentPage - 1)))}
                         disabled={currentPage <= 1}
@@ -508,7 +515,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                 </div>
 
                 {/* Center: Zoom */}
-                <div className="flex items-center gap-2 bg-sidebar rounded-lg p-0.5 border border-border shadow-sm">
+                <div className="flex items-center gap-2 bg-sidebar rounded-lg p-0.5 border border-border shadow-sm shrink-0">
                     <button
                         onClick={() => dispatch(setScale(Math.max(0.2, scale - 0.1)))}
                         className="p-1 hover:bg-surface rounded transition-colors text-text-muted"
@@ -527,7 +534,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                 </div>
 
                 {/* Right: Extract Content button & download icon */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 shrink-0">
                     <button
                         onClick={async () => {
                             const pageConfig = pages[currentPage - 1];

@@ -8,7 +8,7 @@ export default function Home() {
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-blue-500/10 blur-3xl" />
 
-        <div className="container mx-auto px-6 py-24 relative z-10">
+        <div className="container mx-auto px-4 sm:px-6 py-12 md:py-24 relative z-10">
           <nav className="flex justify-between items-center mb-16">
             <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">
               PDF Master
@@ -19,10 +19,10 @@ export default function Home() {
           </nav>
 
           <div className="max-w-4xl mx-auto text-center space-y-8">
-            <h1 className="text-6xl md:text-7xl font-bold tracking-tight">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight">
               Edit PDFs with <span className="text-indigo-400">Superpowers</span>
             </h1>
-            <p className="text-xl text-text-muted max-w-2xl mx-auto leading-relaxed">
+            <p className="text-lg md:text-xl text-text-muted max-w-2xl mx-auto leading-relaxed px-4 sm:px-0">
               The most advanced, secure, and beautiful PDF editor on the web.
               Sign, annotate, and modify documents directly in your browser.
             </p>
@@ -42,8 +42,8 @@ export default function Home() {
       </div>
 
       {/* Features Grid */}
-      <div className="container mx-auto px-6 py-24">
-        <div className="grid md:grid-cols-3 gap-8">
+      <div className="container mx-auto px-4 sm:px-6 py-12 md:py-24">
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8">
           {[
             { icon: Zap, title: "Lightning Fast", desc: "Client-side processing ensures zero latency editing." },
             { icon: Shield, title: "Secure by Design", desc: "Your files never leave your browser for basic edits." },

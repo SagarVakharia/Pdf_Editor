@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
-import { setPdfUrl } from '../../store/slices/canvasSlice';
+import { setPdfUrl, setSidebarLeftOpen, setSidebarRightOpen } from '../../store/slices/canvasSlice';
 import { Toolbar } from './Toolbar';
 // import { PDFViewer } from './PDFViewer';
 
@@ -24,6 +24,16 @@ import { RightSidebar } from './RightSidebar';
 export const EditorLayout: React.FC = () => {
     const dispatch = useDispatch();
     const { scale, pdfUrl, theme } = useSelector((state: RootState) => state.canvas);
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 768) {
+                dispatch(setSidebarLeftOpen(false));
+                dispatch(setSidebarRightOpen(false));
+            }
+        };
+        handleResize();
+    }, [dispatch]);
 
     useEffect(() => {
         if (theme === 'dark') {
