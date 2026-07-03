@@ -120,6 +120,13 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
         const x = (e.clientX - rect.left) / scale;
         const y = (e.clientY - rect.top) / scale;
 
+        // Clicking on the bare page background deselects everything.
+        // Annotations call e.stopPropagation(), so this only fires for empty-page clicks.
+        if (currentTool === 'select' || currentTool === 'hand') {
+            dispatch(setSelectedAnnotationId(null));
+            return;
+        }
+
         if (currentTool === 'stamp') {
             if (!activeStamp) return;
             const id = nanoid();
@@ -132,6 +139,8 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
                 content: activeStamp.text,
                 color: activeStamp.color,
                 size: 130, // Default stamp width
+                minWidth: 130,
+                minHeight: 52,
                 opacity: 1,
                 stampText: activeStamp.text
             }));
