@@ -1,5 +1,8 @@
 # Advanced WYSIWYG PDF Editor
 
+> 🚀 **Live at:** https://pdf-editor-f1av.vercel.app  
+> 📋 **SEO Guide:** See [SEO_README.md](./SEO_README.md) for the full SEO setup, manual steps, and maintenance guide.
+
 An interactive, premium-designed, web-based PDF Editor that allows users to modify text, draw annotations, place images/watermarks, and organize PDF documents (reorder, rotate, delete pages) with perfect canvas coordinate synchronization.
 
 ![PDF Editor Preview](screenshots/editor_ui.png)
@@ -44,7 +47,7 @@ An interactive, premium-designed, web-based PDF Editor that allows users to modi
 - **Framework**: React 19, Next.js (Turbopack)
 - **State Management**: Redux Toolkit (for full undo/redo action history, tab switches, scale, active tool, and annotation state)
 - **Styling**: Tailwind CSS & Custom CSS variables
-- **PDF Rendering**: `react-pdf` & `pdfjs-dist` (utilizes unpkg CDN for the worker to guarantee cross-environment Next.js compilation)
+- **PDF Rendering**: `react-pdf` & `pdfjs-dist` (worker served locally from `/public/pdf.worker.min.mjs` for optimal performance)
 - **PDF Compilation**: `pdf-lib` (handles copy-pages, rotate-page, drawText with custom wrapping, drawRectangle masking, and drawImage operations)
 
 ### Backend

@@ -17,8 +17,10 @@ import { SignLayer } from '@/components/editor/tools/SignLayer';
 import { nanoid } from '@reduxjs/toolkit';
 import { addAnnotation, setSelectedAnnotationId } from '../../store/slices/canvasSlice';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-console.log('PDFViewer initialized workerSrc:', pdfjs.GlobalWorkerOptions.workerSrc);
+// Use the local copy of the PDF.js worker (already in /public/) instead of an
+// external CDN — eliminates a network round-trip and improves LCP / reliability.
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+
 
 interface PDFViewerProps {
     file: File | string | null;
