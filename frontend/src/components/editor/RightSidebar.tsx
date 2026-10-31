@@ -43,7 +43,7 @@ export const RightSidebar: React.FC = () => {
                     className={`h-16 flex-1 py-3.5 text-sm font-semibold capitalize border-b-2 transition-all duration-200 ${
                         activeRightTab === 'properties'
                             ? 'border-indigo-600 dark:border-indigo-400 text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20'
-                            : 'border-transparent text-text-muted hover:text-text-main hover:bg-surface dark:hover:bg-gray-800/30'
+                            : 'border-transparent text-text-muted hover:text-text-main hover:bg-surface dark:hover:bg-surface/80'
                     }`}
                 >
                     Properties
@@ -53,7 +53,7 @@ export const RightSidebar: React.FC = () => {
                     className={`h-16 flex-1 py-3.5 text-sm font-semibold capitalize border-b-2 transition-all duration-200 ${
                         activeRightTab === 'layers'
                             ? 'border-indigo-600 dark:border-indigo-400 text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20'
-                            : 'border-transparent text-text-muted hover:text-text-main hover:bg-surface dark:hover:bg-gray-800/30'
+                            : 'border-transparent text-text-muted hover:text-text-main hover:bg-surface dark:hover:bg-surface/80'
                     }`}
                 >
                     Layers
@@ -109,7 +109,7 @@ export const RightSidebar: React.FC = () => {
                                         <textarea
                                             value={selectedAnnotation.content || ''}
                                             onChange={(e) => handleChange('content', e.target.value)}
-                                            className="w-full h-24 bg-gray-50 dark:bg-gray-800/50 border border-border rounded-lg p-3 text-sm text-text-main focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all resize-none placeholder:text-text-muted"
+                                            className="w-full h-24 bg-surface border border-border rounded-lg p-3 text-sm text-text-main focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all resize-none placeholder:text-text-muted"
                                             placeholder="Enter text content..."
                                         />
                                     </div>
@@ -117,7 +117,7 @@ export const RightSidebar: React.FC = () => {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-xs text-text-muted block">Size</label>
-                                            <div className="bg-gray-50 dark:bg-gray-800/50 border border-border rounded-lg px-3 py-2 flex items-center">
+                                            <div className="bg-surface border border-border rounded-lg px-3 py-2 flex items-center">
                                                 <input
                                                     type="number"
                                                     value={selectedAnnotation.size || 16}
@@ -128,7 +128,7 @@ export const RightSidebar: React.FC = () => {
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-xs text-text-muted block">Color</label>
-                                            <div className="relative h-[38px] bg-gray-50 dark:bg-gray-800/50 border border-border rounded-lg p-1 flex items-center gap-2 px-2">
+                                            <div className="relative h-[38px] bg-surface border border-border rounded-lg p-1 flex items-center gap-2 px-2">
                                                 <input
                                                     type="color"
                                                     value={selectedAnnotation.color || '#000000'}
@@ -151,7 +151,7 @@ export const RightSidebar: React.FC = () => {
                                                     Clear
                                                 </button>
                                             </div>
-                                            <div className="relative h-[38px] bg-gray-50 dark:bg-gray-800/50 border border-border rounded-lg p-1 flex items-center gap-2 px-2">
+                                            <div className="relative h-[38px] bg-surface border border-border rounded-lg p-1 flex items-center gap-2 px-2">
                                                 <div className="absolute inset-x-2 inset-y-2 checkerboard-bg -z-10 rounded opacity-20"></div>
                                                 <input
                                                     type="color"
@@ -172,7 +172,7 @@ export const RightSidebar: React.FC = () => {
                                             <select
                                                 value={selectedAnnotation.fontFamily || 'Arial'}
                                                 onChange={(e) => handleChange('fontFamily', e.target.value)}
-                                                className="w-full appearance-none bg-gray-50 dark:bg-gray-800/50 border border-border rounded-lg px-3 py-2.5 text-sm text-text-main focus:outline-none focus:border-indigo-500 transition-colors"
+                                                className="w-full appearance-none bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-text-main focus:outline-none focus:border-indigo-500 transition-colors"
                                             >
                                                 <option value="Arial">Arial</option>
                                                 <option value="Times New Roman">Times New Roman</option>
@@ -185,7 +185,7 @@ export const RightSidebar: React.FC = () => {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <div className="flex bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-border p-1 divide-x divide-border">
+                                        <div className="flex bg-surface rounded-lg border border-border p-1 divide-x divide-border">
                                             <button
                                                 onClick={() => handleChange('textAlign', 'left')}
                                                 className={`flex-1 p-2 flex items-center justify-center rounded-l hover:bg-surface/50 transition-colors ${selectedAnnotation.textAlign === 'left' ? 'text-indigo-500 font-bold' : 'text-text-muted'}`}
@@ -207,13 +207,13 @@ export const RightSidebar: React.FC = () => {
                                             <div className="w-px h-full bg-border mx-1" />
                                             <button
                                                 onClick={() => handleChange('isBold', !selectedAnnotation.isBold)}
-                                                className={`flex-1 p-2 flex items-center justify-center hover:bg-surface/50 transition-colors ${selectedAnnotation.isBold ? 'text-indigo-500 font-bold bg-gray-100 dark:bg-gray-700' : 'text-text-muted'}`}
+                                                className={`flex-1 p-2 flex items-center justify-center hover:bg-surface/50 transition-colors ${selectedAnnotation.isBold ? 'text-indigo-500 font-bold bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400' : 'text-text-muted'}`}
                                             >
                                                 <Bold className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => handleChange('isItalic', !selectedAnnotation.isItalic)}
-                                                className={`flex-1 p-2 flex items-center justify-center rounded-r hover:bg-surface/50 transition-colors ${selectedAnnotation.isItalic ? 'text-indigo-500 font-bold bg-gray-100 dark:bg-gray-700' : 'text-text-muted'}`}
+                                                className={`flex-1 p-2 flex items-center justify-center rounded-r hover:bg-surface/50 transition-colors ${selectedAnnotation.isItalic ? 'text-indigo-500 font-bold bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400' : 'text-text-muted'}`}
                                             >
                                                 <Italic className="w-4 h-4" />
                                             </button>
@@ -240,7 +240,7 @@ export const RightSidebar: React.FC = () => {
                                                 type="number"
                                                 value={selectedAnnotation.size || 100}
                                                 onChange={(e) => handleChange('size', parseInt(e.target.value))}
-                                                className="w-16 bg-gray-50 dark:bg-gray-800/50 border border-border rounded-lg px-2 py-1 text-xs text-text-main text-center focus:outline-none focus:border-indigo-500"
+                                                className="w-16 bg-surface border border-border rounded-lg px-2 py-1 text-xs text-text-main text-center focus:outline-none focus:border-indigo-500"
                                             />
                                         </div>
                                     </div>
@@ -330,13 +330,13 @@ export const RightSidebar: React.FC = () => {
                                                 type="number"
                                                 value={selectedAnnotation.size || 2}
                                                 onChange={(e) => handleChange('size', parseInt(e.target.value))}
-                                                className="w-12 bg-gray-50 dark:bg-gray-800/50 border border-border rounded-lg px-2 py-1 text-xs text-text-main text-center focus:outline-none focus:border-indigo-500"
+                                                className="w-12 bg-surface border border-border rounded-lg px-2 py-1 text-xs text-text-main text-center focus:outline-none focus:border-indigo-500"
                                             />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs text-text-muted block">Stroke Color</label>
-                                        <div className="relative h-[38px] bg-gray-50 dark:bg-gray-800/50 border border-border rounded-lg p-1 flex items-center gap-2 px-2">
+                                        <div className="relative h-[38px] bg-surface border border-border rounded-lg p-1 flex items-center gap-2 px-2">
                                             <input
                                                 type="color"
                                                 value={selectedAnnotation.color || '#000000'}
@@ -360,7 +360,7 @@ export const RightSidebar: React.FC = () => {
                                                     Clear (Transparent)
                                                 </button>
                                             </div>
-                                            <div className="relative h-[38px] bg-gray-50 dark:bg-gray-800/50 border border-border rounded-lg p-1 flex items-center gap-2 px-2">
+                                            <div className="relative h-[38px] bg-surface border border-border rounded-lg p-1 flex items-center gap-2 px-2">
                                                 <input
                                                     type="color"
                                                     value={selectedAnnotation.fillColor && selectedAnnotation.fillColor !== 'transparent' ? selectedAnnotation.fillColor : '#ffffff'}
@@ -406,12 +406,12 @@ export const RightSidebar: React.FC = () => {
                                                 handleChange('content', e.target.value);
                                                 handleChange('stampText', e.target.value);
                                             }}
-                                            className="w-full bg-gray-50 dark:bg-gray-800/50 border border-border rounded-lg px-3 py-2.5 text-sm text-text-main focus:outline-none focus:border-indigo-500 transition-colors font-bold uppercase tracking-wider"
+                                            className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-text-main focus:outline-none focus:border-indigo-500 transition-colors font-bold uppercase tracking-wider"
                                         />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs text-text-muted block">Stamp Color</label>
-                                        <div className="relative h-[38px] bg-gray-50 dark:bg-gray-800/50 border border-border rounded-lg p-1 flex items-center gap-2 px-2">
+                                        <div className="relative h-[38px] bg-surface border border-border rounded-lg p-1 flex items-center gap-2 px-2">
                                             <input
                                                 type="color"
                                                 value={selectedAnnotation.color || '#22c55e'}
