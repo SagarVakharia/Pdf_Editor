@@ -280,7 +280,7 @@ export const DrawLayer: React.FC<DrawLayerProps> = ({ pageNumber, scale }) => {
         }
     };
 
-    const isActive = isShapeTool(tool);
+    const isActive = isShapeTool(tool) || tool === 'erase';
     const cursorClass = isActive ? (tool === 'erase' ? 'cursor-pointer' : 'cursor-crosshair') : 'pointer-events-none';
 
     return (

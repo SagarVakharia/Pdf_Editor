@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
-import { setSelectedAnnotationId, deleteAnnotation, updateAnnotationProperties } from '../../../store/slices/canvasSlice';
+import { setSelectedAnnotationId, deleteAnnotation, updateAnnotationProperties, updateAnnotationLive, commitHistory } from '../../../store/slices/canvasSlice';
 
 interface SignLayerProps {
     pageNumber: number;
@@ -27,6 +27,7 @@ export const SignLayer: React.FC<SignLayerProps> = ({ pageNumber, scale }) => {
         e.stopPropagation();
         e.preventDefault();
         dispatch(setSelectedAnnotationId(ann.id));
+        dispatch(commitHistory());
 
         const startX = e.clientX;
         const startY = e.clientY;
@@ -36,15 +37,7 @@ export const SignLayer: React.FC<SignLayerProps> = ({ pageNumber, scale }) => {
         const handleMouseMove = (moveEvent: MouseEvent) => {
             const dx = (moveEvent.clientX - startX) / scale;
             const dy = (moveEvent.clientY - startY) / scale;
-            dispatch(
-                updateAnnotationProperties({
-                    id: ann.id,
-                    updates: {
-                        x: initialX + dx,
-                        y: initialY + dy
-                    }
-                })
-            );
+            dispatch(updateAnnotationLive({ id: ann.id, updates: { x: initialX + dx, y: initialY + dy } }));
         };
 
         const handleMouseUp = () => {

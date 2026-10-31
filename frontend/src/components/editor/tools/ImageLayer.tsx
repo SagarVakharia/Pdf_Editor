@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
-import { addAnnotation, setSelectedAnnotationId, setTool, deleteAnnotation, updateAnnotationProperties } from '../../../store/slices/canvasSlice';
+import { addAnnotation, setSelectedAnnotationId, setTool, deleteAnnotation, updateAnnotationProperties, updateAnnotationLive, commitHistory } from '../../../store/slices/canvasSlice';
 import { nanoid } from '@reduxjs/toolkit';
 
 interface ImageLayerProps {
@@ -26,6 +26,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, scale }) => 
         e.stopPropagation();
         e.preventDefault();
         dispatch(setSelectedAnnotationId(ann.id));
+        dispatch(commitHistory());
 
         const startX = e.clientX;
         const startY = e.clientY;
@@ -35,7 +36,7 @@ export const ImageLayer: React.FC<ImageLayerProps> = ({ pageNumber, scale }) => 
         const handleMouseMove = (moveEvent: MouseEvent) => {
             const dx = (moveEvent.clientX - startX) / scale;
             const dy = (moveEvent.clientY - startY) / scale;
-            dispatch(updateAnnotationProperties({
+            dispatch(updateAnnotationLive({
                 id: ann.id,
                 updates: {
                     x: initialX + dx,

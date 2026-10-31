@@ -5,7 +5,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import { setPdfUrl, setSidebarLeftOpen, setSidebarRightOpen } from '../../store/slices/canvasSlice';
 import { Toolbar } from './Toolbar';
-// import { PDFViewer } from './PDFViewer';
 
 import dynamic from 'next/dynamic';
 
@@ -33,6 +32,8 @@ export const EditorLayout: React.FC = () => {
             }
         };
         handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
     }, [dispatch]);
 
     useEffect(() => {

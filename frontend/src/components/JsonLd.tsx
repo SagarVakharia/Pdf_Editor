@@ -15,12 +15,12 @@ interface JsonLdProps {
 }
 
 export default function JsonLd({ data }: JsonLdProps) {
+  // Sanitize '<' to prevent breaking out of <script> tag via </script> in schema data
+  const safeJson = JSON.stringify(data).replace(/</g, '\\u003c');
   return (
     <script
       type="application/ld+json"
-      // Next.js App Router: dangerouslySetInnerHTML in a Server Component is safe here
-      // because the data is always a serialised JS object we control — no user input.
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      dangerouslySetInnerHTML={{ __html: safeJson }}
     />
   );
 }
@@ -45,15 +45,6 @@ export const webAppSchema = {
     price: '0',
     priceCurrency: 'USD',
   },
-  // ⚠️  aggregateRating intentionally omitted until real user reviews are collected.
-  // To add it back, uncomment and fill in real data:
-  // aggregateRating: {
-  //   '@type': 'AggregateRating',
-  //   ratingValue: '4.8',      ← use real average
-  //   ratingCount: '50',       ← use real review count
-  //   bestRating: '5',
-  //   worstRating: '1',
-  // },
   featureList: [
     'Edit PDF text',
     'Sign PDF online',

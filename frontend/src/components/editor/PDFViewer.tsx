@@ -44,7 +44,8 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
         e.preventDefault();
         e.stopPropagation();
         const droppedFile = e.dataTransfer.files?.[0];
-        if (droppedFile && droppedFile.type === 'application/pdf') {
+        const isPdf = droppedFile && (droppedFile.type === 'application/pdf' || droppedFile.name.toLowerCase().endsWith('.pdf'));
+        if (droppedFile && isPdf) {
             if (file && typeof file === 'string' && file.startsWith('blob:')) {
                 URL.revokeObjectURL(file);
             }
@@ -55,6 +56,10 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
 
     const handleLoadUrl = async () => {
         if (!urlInput.trim()) return;
+        if (!/^https?:\/\//i.test(urlInput.trim())) {
+            alert("Please enter a valid HTTP or HTTPS PDF URL.");
+            return;
+        }
         setIsLoadingUrl(true);
         try {
             let targetUrl = urlInput.trim();
@@ -158,7 +163,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({ file, scale, onUpload }) =
                 x,
                 y,
                 page: pageIndex,
-                content: activeSignature.type === 'text' ? activeSignature.content : undefined,
+                content: activeSignature.type === 'text' || activeSignature.type === 'image' ? activeSignature.content : undefined,
                 path: activeSignature.type === 'draw' ? activeSignature.path : undefined,
                 color: '#000000', // Default signature color
                 size: 2, // line width

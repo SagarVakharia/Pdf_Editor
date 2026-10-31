@@ -55,7 +55,7 @@ interface CanvasState {
     activeRightTab: 'properties' | 'layers';
     navigationRequest: number | null; // For explicit navigation events
     activeStamp: { text: string; color: string } | null;
-    activeSignature: { type: 'draw' | 'text', path?: { x: number; y: number }[], content?: string, width: number, height: number } | null;
+    activeSignature: { type: 'draw' | 'text' | 'image', path?: { x: number; y: number }[], content?: string, width: number, height: number } | null;
     history: {
         past: { pages: PageConfig[], annotations: Annotation[] }[];
         future: { pages: PageConfig[], annotations: Annotation[] }[];
@@ -163,7 +163,6 @@ export const canvasSlice = createSlice({
             state.totalPages = state.pages.length;
         },
         reorderPages: (state, action: PayloadAction<{ activeId: string, overId: string }>) => {
-            // Check if actual change
             const oldIndex = state.pages.findIndex(p => p.id === action.payload.activeId);
             const newIndex = state.pages.findIndex(p => p.id === action.payload.overId);
             if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
@@ -238,6 +237,16 @@ export const canvasSlice = createSlice({
                 state.annotations[index] = { ...state.annotations[index], ...action.payload.updates };
             }
         },
+        // Live updates for mouse dragging without flooding undo history
+        updateAnnotationLive: (state, action: PayloadAction<{ id: string; updates: Partial<Annotation> }>) => {
+            const index = state.annotations.findIndex(a => a.id === action.payload.id);
+            if (index !== -1) {
+                state.annotations[index] = { ...state.annotations[index], ...action.payload.updates };
+            }
+        },
+        commitHistory: (state) => {
+            saveHistory(state);
+        },
         undo: (state) => {
             if (state.history.past.length > 0) {
                 const previous = state.history.past.pop();
@@ -249,9 +258,7 @@ export const canvasSlice = createSlice({
                     state.pages = previous.pages;
                     state.annotations = previous.annotations;
 
-                    // Recalculate derived state if needed
                     state.totalPages = state.pages.length;
-                    // Reset selection to avoid ghost selection
                     state.selectedAnnotationId = null;
                 }
             }
@@ -307,7 +314,7 @@ export const {
     initPages, rotatePage, deletePage, reorderPages, movePage,
     addAnnotation, updateAnnotation, removeAnnotation, deleteAnnotation, setSelectedAnnotationId,
     setSidebarLeftOpen, setSidebarRightOpen, setActiveSidebarTab, setActiveRightTab,
-    updateAnnotationProperties, undo, redo, navigateToPage, togglePageExtraction, setAnnotations, removeAnnotations,
+    updateAnnotationProperties, updateAnnotationLive, commitHistory, undo, redo, navigateToPage, togglePageExtraction, setAnnotations, removeAnnotations,
     toggleTheme, setTheme, setActiveStamp, setActiveSignature, setActiveShapeType
 } = canvasSlice.actions;
 

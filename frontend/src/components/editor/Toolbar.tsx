@@ -15,7 +15,8 @@ import {
     toggleTheme,
     setActiveStamp,
     setActiveSignature,
-    setActiveShapeType
+    setActiveShapeType,
+    deleteAnnotation
 } from '../../store/slices/canvasSlice';
 import { generatePDF } from '../../utils/pdfGenerator';
 import { SignatureModal } from './SignatureModal';
@@ -55,7 +56,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
     const dispatch = useDispatch();
     const {
         scale, tool, currentPage, totalPages, sidebarLeftOpen, sidebarRightOpen,
-        history, pdfUrl, pages, annotations, theme, activeStamp, activeShapeType
+        history, pdfUrl, pages, annotations, theme, activeStamp, activeShapeType, selectedAnnotationId
     } = useSelector((state: RootState) => state.canvas);
 
     const [
@@ -91,7 +92,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
             // Delete selected annotation
             if ((e.key === 'Delete' || e.key === 'Backspace')) {
                 e.preventDefault();
-                window.dispatchEvent(new CustomEvent('delete-selected'));
+                if (selectedAnnotationId) { dispatch(deleteAnnotation(selectedAnnotationId)); }
                 return;
             }
 
@@ -284,7 +285,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onUpload }) => {
                 onClose={() => setIsSignatureModalOpen(false)}
                 onSave={(sig) => {
                     const adapted = sig.imageUrl
-                        ? { type: 'draw' as const, content: sig.imageUrl, width: sig.width, height: sig.height }
+                        ? { type: 'image' as const, content: sig.imageUrl, width: sig.width, height: sig.height }
                         : { type: sig.type as 'draw' | 'text', path: sig.path, content: sig.content, width: sig.width, height: sig.height };
                     dispatch(setActiveSignature(adapted));
                     dispatch(setTool('sign'));

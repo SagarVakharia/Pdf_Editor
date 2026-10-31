@@ -28,8 +28,8 @@ import {
 import { SortablePageItem } from './SortablePageItem';
 import { Document, pdfjs } from 'react-pdf';
 
-// Ensure worker is configured
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Ensure worker is configured to local asset (avoids external CDN latency and CSP blocks)
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 export const LeftSidebar: React.FC = () => {
     const dispatch = useDispatch();

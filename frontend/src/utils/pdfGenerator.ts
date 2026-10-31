@@ -1,7 +1,7 @@
 import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib';
 
 const sanitizeText = (text: string) => {
-    return text.replace(/[^\x00-\xFF]/g, (char) => {
+    return (text || '').replace(/[^\x00-\xFF]/g, (char) => {
         switch (char.charCodeAt(0)) {
             case 8216: return "'"; // ‘
             case 8217: return "'"; // ’
@@ -16,9 +16,24 @@ const sanitizeText = (text: string) => {
     });
 };
 
+const parseColor = (colorHex?: string, fallback = { r: 0, g: 0, b: 0 }) => {
+    if (!colorHex || colorHex === 'transparent') return rgb(fallback.r, fallback.g, fallback.b);
+    let hex = colorHex.trim();
+    if (!hex.startsWith('#')) return rgb(fallback.r, fallback.g, fallback.b);
+    if (hex.length === 4) {
+        hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+    }
+    if (hex.length !== 7) return rgb(fallback.r, fallback.g, fallback.b);
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    if (isNaN(r) || isNaN(g) || isNaN(b)) return rgb(fallback.r, fallback.g, fallback.b);
+    return rgb(r / 255, g / 255, b / 255);
+};
+
 // Wrap text to stay within the max allowed width, preserving paragraph newlines (\n)
 const wrapText = (text: string, maxWidth: number, fontSize: number, font: any) => {
-    const paragraphs = text.split('\n');
+    const paragraphs = (text || '').split('\n');
     const lines: string[] = [];
 
     for (const paragraph of paragraphs) {
@@ -127,7 +142,7 @@ export const generatePDF = async (
 
     try {
         // Fetch current PDF
-        let existingPdfBytes;
+        let existingPdfBytes: ArrayBuffer;
         try {
             const res = await fetch(pdfUrl);
             if (!res.ok) throw new Error(`Failed to fetch PDF: ${res.statusText}`);
@@ -137,7 +152,7 @@ export const generatePDF = async (
         }
 
         // Load into pdf-lib
-        let pdfDoc;
+        let pdfDoc: PDFDocument;
         try {
             pdfDoc = await PDFDocument.load(existingPdfBytes);
         } catch (e) {
@@ -194,12 +209,8 @@ export const generatePDF = async (
             const annotationRot = (360 - pageRot) % 360;
 
             for (const annotation of pageAnnotations) {
-                // Parse color
-                const colorHex = annotation.color || '#000000';
-                const r = parseInt(colorHex.slice(1, 3), 16) / 255;
-                const g = parseInt(colorHex.slice(3, 5), 16) / 255;
-                const b = parseInt(colorHex.slice(5, 7), 16) / 255;
-                const pdfColor = rgb(r, g, b);
+                // Parse color safely
+                const pdfColor = parseColor(annotation.color, { r: 0, g: 0, b: 0 });
                 const opacity = annotation.opacity ?? 1;
 
                 if (annotation.type === 'text') {
@@ -240,12 +251,7 @@ export const generatePDF = async (
 
                         // Draw Background (Opaque background if customized by user)
                         if (annotation.backgroundColor && annotation.backgroundColor !== 'transparent') {
-                            const bgColorHex = annotation.backgroundColor;
-                            const bgR = parseInt(bgColorHex.slice(1, 3), 16) / 255;
-                            const bgG = parseInt(bgColorHex.slice(3, 5), 16) / 255;
-                            const bgB = parseInt(bgColorHex.slice(5, 7), 16) / 255;
-
-                            // Calculate translated coordinates for the background box
+                            const bgPdfColor = parseColor(annotation.backgroundColor, { r: 1, g: 1, b: 1 });
                             const boxCoords = getRotatedCoordinates(annotation.x, annotation.y, width, height, pageRot, availableWidth, totalBoxHeight);
 
                             page.drawRectangle({
@@ -253,7 +259,7 @@ export const generatePDF = async (
                                 y: boxCoords.y,
                                 width: availableWidth,
                                 height: totalBoxHeight,
-                                color: rgb(bgR, bgG, bgB),
+                                color: bgPdfColor,
                                 opacity: 1,
                                 rotate: degrees(annotationRot)
                             });
@@ -265,8 +271,6 @@ export const generatePDF = async (
                             if (lineText === undefined) continue;
 
                             const lineSpacing = lineIndex * lineHeight;
-                            
-                            // Pass screen coordinates of the current line to get translated unrotated coordinates
                             const lineCoords = getRotatedCoordinates(annotation.x, annotation.y + lineSpacing, width, height, pageRot, availableWidth, fontSize);
 
                             page.drawText(sanitizeText(lineText), {
@@ -282,31 +286,70 @@ export const generatePDF = async (
                     }
                 }
                 else if (annotation.type === 'sign' && annotation.content && !annotation.path) {
-                    const fontSize = (annotation.minHeight || 50) * 0.8;
-                    const font = await newPdfDoc.embedFont(StandardFonts.TimesRomanItalic);
-                    
-                    const textWidth = font.widthOfTextAtSize(sanitizeText(annotation.content), fontSize);
-                    const lineCoords = getRotatedCoordinates(annotation.x, annotation.y, width, height, pageRot, textWidth, fontSize);
+                    if (annotation.content.startsWith('data:') || annotation.content.startsWith('blob:') || annotation.content.startsWith('http')) {
+                        // Embed image signature
+                        try {
+                            let imageBytes: ArrayBuffer;
+                            if (annotation.content.startsWith('data:')) {
+                                const base64Data = annotation.content.split(',')[1];
+                                const binaryString = atob(base64Data);
+                                const bytes = new Uint8Array(binaryString.length);
+                                for (let k = 0; k < binaryString.length; k++) bytes[k] = binaryString.charCodeAt(k);
+                                imageBytes = bytes.buffer;
+                            } else {
+                                imageBytes = await fetch(annotation.content).then(res => res.arrayBuffer());
+                            }
 
-                    page.drawText(sanitizeText(annotation.content), {
-                        x: lineCoords.x,
-                        y: lineCoords.y,
-                        size: fontSize,
-                        font: font,
-                        color: pdfColor,
-                        opacity: opacity,
-                        rotate: degrees(annotationRot)
-                    });
+                            let image;
+                            if (annotation.content.startsWith('data:image/png') || annotation.content.endsWith('.png')) {
+                                image = await newPdfDoc.embedPng(imageBytes).catch(() => null);
+                            } else {
+                                image = await newPdfDoc.embedJpg(imageBytes).catch(() => newPdfDoc.embedPng(imageBytes).catch(() => null));
+                            }
+
+                            if (image) {
+                                const imgWidth = annotation.minWidth || 150;
+                                const imgHeight = annotation.minHeight || 60;
+                                const coords = getRotatedCoordinates(annotation.x, annotation.y, width, height, pageRot, imgWidth, imgHeight);
+
+                                page.drawImage(image, {
+                                    x: coords.x,
+                                    y: coords.y,
+                                    width: imgWidth,
+                                    height: imgHeight,
+                                    opacity: opacity,
+                                    rotate: degrees(annotationRot)
+                                });
+                            }
+                        } catch (e) {
+                            console.error("Failed to embed image signature", e);
+                        }
+                    } else {
+                        // Text typed signature
+                        const fontSize = (annotation.minHeight || 50) * 0.8;
+                        const font = await newPdfDoc.embedFont(StandardFonts.TimesRomanItalic);
+
+                        const textWidth = font.widthOfTextAtSize(sanitizeText(annotation.content), fontSize);
+                        const lineCoords = getRotatedCoordinates(annotation.x, annotation.y, width, height, pageRot, textWidth, fontSize);
+
+                        page.drawText(sanitizeText(annotation.content), {
+                            x: lineCoords.x,
+                            y: lineCoords.y,
+                            size: fontSize,
+                            font: font,
+                            color: pdfColor,
+                            opacity: opacity,
+                            rotate: degrees(annotationRot)
+                        });
+                    }
                 }
                 else if ((annotation.type === 'draw' || annotation.type === 'sign') && annotation.path && annotation.path.length > 1) {
                     const thickness = annotation.size || 2;
                     const pathData = annotation.path;
 
-                    // For 'sign' type, path is normalized to 0,0 - offset by annotation.x/y
                     const offsetX = annotation.type === 'sign' ? annotation.x : 0;
                     const offsetY = annotation.type === 'sign' ? annotation.y : 0;
 
-                    // Map every point of the drawing path to unrotated page space
                     const firstPt = getRotatedCoordinates(pathData[0].x + offsetX, pathData[0].y + offsetY, width, height, pageRot);
                     let svgPath = `M ${firstPt.x} ${firstPt.y}`;
                     for (let k = 1; k < pathData.length; k++) {
@@ -346,7 +389,6 @@ export const generatePDF = async (
                         opacity: opacity
                     });
 
-                    // Draw arrowhead at end coordinate in PDF space
                     const angle = Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x);
                     const headLength = 12;
                     const arrowPt1 = {
@@ -384,11 +426,7 @@ export const generatePDF = async (
 
                     let fillPdfColor;
                     if (annotation.fillColor && annotation.fillColor !== 'transparent') {
-                        const fHex = annotation.fillColor;
-                        const fr = parseInt(fHex.slice(1, 3), 16) / 255;
-                        const fg = parseInt(fHex.slice(3, 5), 16) / 255;
-                        const fb = parseInt(fHex.slice(5, 7), 16) / 255;
-                        fillPdfColor = rgb(fr, fg, fb);
+                        fillPdfColor = parseColor(annotation.fillColor);
                     }
 
                     page.drawRectangle({
@@ -401,6 +439,120 @@ export const generatePDF = async (
                         color: fillPdfColor,
                         opacity: opacity,
                         rotate: degrees(annotationRot)
+                    });
+                }
+                else if (annotation.type === 'circle' && annotation.endX !== undefined && annotation.endY !== undefined) {
+                    const thickness = annotation.size || 2;
+                    const rx = Math.min(annotation.x, annotation.endX);
+                    const ry = Math.min(annotation.y, annotation.endY);
+                    const rw = Math.abs(annotation.endX - annotation.x);
+                    const rh = Math.abs(annotation.endY - annotation.y);
+                    const cx = rx + rw / 2;
+                    const cy = ry + rh / 2;
+                    const centerCoords = getRotatedCoordinates(cx, cy, width, height, pageRot);
+
+                    let fillPdfColor;
+                    if (annotation.fillColor && annotation.fillColor !== 'transparent') {
+                        fillPdfColor = parseColor(annotation.fillColor);
+                    }
+
+                    page.drawEllipse({
+                        x: centerCoords.x,
+                        y: centerCoords.y,
+                        xScale: rw / 2,
+                        yScale: rh / 2,
+                        borderColor: pdfColor,
+                        borderWidth: thickness,
+                        color: fillPdfColor,
+                        opacity: opacity,
+                        rotate: degrees(annotationRot)
+                    });
+                }
+                else if (annotation.type === 'triangle' && annotation.endX !== undefined && annotation.endY !== undefined) {
+                    const thickness = annotation.size || 2;
+                    const x1 = annotation.x, y1 = annotation.y;
+                    const x2 = annotation.endX, y2 = annotation.endY;
+                    const cx = (x1 + x2) / 2;
+
+                    const p1 = getRotatedCoordinates(cx, y1, width, height, pageRot);
+                    const p2 = getRotatedCoordinates(x2, y2, width, height, pageRot);
+                    const p3 = getRotatedCoordinates(x1, y2, width, height, pageRot);
+
+                    const svgPath = `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} L ${p3.x} ${p3.y} Z`;
+                    let fillPdfColor;
+                    if (annotation.fillColor && annotation.fillColor !== 'transparent') {
+                        fillPdfColor = parseColor(annotation.fillColor);
+                    }
+
+                    page.drawSvgPath(svgPath, {
+                        borderColor: pdfColor,
+                        borderWidth: thickness,
+                        color: fillPdfColor,
+                        borderOpacity: opacity,
+                        opacity: opacity
+                    });
+                }
+                else if (annotation.type === 'diamond' && annotation.endX !== undefined && annotation.endY !== undefined) {
+                    const thickness = annotation.size || 2;
+                    const x1 = annotation.x, y1 = annotation.y;
+                    const x2 = annotation.endX, y2 = annotation.endY;
+                    const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
+                    const hw = Math.abs(x2 - x1) / 2, hh = Math.abs(y2 - y1) / 2;
+
+                    const pTop = getRotatedCoordinates(cx, cy - hh, width, height, pageRot);
+                    const pRight = getRotatedCoordinates(cx + hw, cy, width, height, pageRot);
+                    const pBottom = getRotatedCoordinates(cx, cy + hh, width, height, pageRot);
+                    const pLeft = getRotatedCoordinates(cx - hw, cy, width, height, pageRot);
+
+                    const svgPath = `M ${pTop.x} ${pTop.y} L ${pRight.x} ${pRight.y} L ${pBottom.x} ${pBottom.y} L ${pLeft.x} ${pLeft.y} Z`;
+                    let fillPdfColor;
+                    if (annotation.fillColor && annotation.fillColor !== 'transparent') {
+                        fillPdfColor = parseColor(annotation.fillColor);
+                    }
+
+                    page.drawSvgPath(svgPath, {
+                        borderColor: pdfColor,
+                        borderWidth: thickness,
+                        color: fillPdfColor,
+                        borderOpacity: opacity,
+                        opacity: opacity
+                    });
+                }
+                else if (annotation.type === 'star' && annotation.endX !== undefined && annotation.endY !== undefined) {
+                    const thickness = annotation.size || 2;
+                    const x1 = annotation.x, y1 = annotation.y;
+                    const x2 = annotation.endX, y2 = annotation.endY;
+                    const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
+                    const outerR = Math.min(Math.abs(x2 - x1), Math.abs(y2 - y1)) / 2;
+                    const innerR = outerR * 0.4;
+                    const points = 5;
+
+                    const pts: { x: number; y: number }[] = [];
+                    for (let pIdx = 0; pIdx < points * 2; pIdx++) {
+                        const angle = (pIdx * Math.PI) / points - Math.PI / 2;
+                        const r = pIdx % 2 === 0 ? outerR : innerR;
+                        const px = cx + r * Math.cos(angle);
+                        const py = cy + r * Math.sin(angle);
+                        pts.push(getRotatedCoordinates(px, py, width, height, pageRot));
+                    }
+
+                    let svgPath = `M ${pts[0].x} ${pts[0].y}`;
+                    for (let pIdx = 1; pIdx < pts.length; pIdx++) {
+                        svgPath += ` L ${pts[pIdx].x} ${pts[pIdx].y}`;
+                    }
+                    svgPath += ' Z';
+
+                    let fillPdfColor;
+                    if (annotation.fillColor && annotation.fillColor !== 'transparent') {
+                        fillPdfColor = parseColor(annotation.fillColor);
+                    }
+
+                    page.drawSvgPath(svgPath, {
+                        borderColor: pdfColor,
+                        borderWidth: thickness,
+                        color: fillPdfColor,
+                        borderOpacity: opacity,
+                        opacity: opacity
                     });
                 }
                 else if (annotation.type === 'highlight' && annotation.endX !== undefined && annotation.endY !== undefined) {
@@ -422,15 +574,12 @@ export const generatePDF = async (
                     });
                 }
                 else if (annotation.type === 'stamp') {
-                    const stampW = annotation.size || 120;
-                    const stampH = 30;
+                    const stampW = annotation.minWidth || annotation.size || 130;
+                    const stampH = annotation.minHeight || 48;
                     const stampCoords = getRotatedCoordinates(annotation.x, annotation.y, width, height, pageRot, stampW, stampH);
 
-                    // Light opacity background for the stamp body
-                    const bgR = r;
-                    const bgG = g;
-                    const bgB = b;
-                    const fillBgColor = rgb(Math.min(1, bgR + 0.92), Math.min(1, bgG + 0.92), Math.min(1, bgB + 0.92)); // Lightened stamp color
+                    // Light tinted background for stamp
+                    const fillBgColor = parseColor(annotation.color, { r: 0.95, g: 0.98, b: 0.95 });
 
                     page.drawRectangle({
                         x: stampCoords.x,
@@ -440,15 +589,27 @@ export const generatePDF = async (
                         borderColor: pdfColor,
                         borderWidth: 2,
                         color: fillBgColor,
-                        opacity: opacity,
+                        opacity: 0.12,
                         rotate: degrees(annotationRot - 4) // slight tilt
+                    });
+
+                    page.drawRectangle({
+                        x: stampCoords.x,
+                        y: stampCoords.y,
+                        width: stampW,
+                        height: stampH,
+                        borderColor: pdfColor,
+                        borderWidth: 2,
+                        opacity: opacity,
+                        rotate: degrees(annotationRot - 4)
                     });
 
                     // Draw stamp text inside
                     const boldFont = await newPdfDoc.embedFont(StandardFonts.HelveticaBold);
-                    const stampText = annotation.content || 'APPROVED';
-                    const textW = boldFont.widthOfTextAtSize(stampText, 10);
-                    const textH = 8;
+                    const stampText = (annotation.content || 'APPROVED').toUpperCase();
+                    const stampFontSize = Math.max(8, Math.min(stampW * 0.13, stampH * 0.5));
+                    const textW = boldFont.widthOfTextAtSize(stampText, stampFontSize);
+                    const textH = stampFontSize * 0.8;
                     const textX = annotation.x + (stampW - textW) / 2;
                     const textY = annotation.y + (stampH - textH) / 2;
                     const textCoords = getRotatedCoordinates(textX, textY, width, height, pageRot, textW, textH);
@@ -456,7 +617,7 @@ export const generatePDF = async (
                     page.drawText(stampText, {
                         x: textCoords.x,
                         y: textCoords.y + 1,
-                        size: 10,
+                        size: stampFontSize,
                         font: boldFont,
                         color: pdfColor,
                         opacity: opacity,
@@ -481,7 +642,7 @@ export const generatePDF = async (
 
                         let image;
                         if (annotation.content.startsWith('data:image/png') || annotation.content.endsWith('.png')) {
-                            image = await newPdfDoc.embedPng(imageBytes);
+                            image = await newPdfDoc.embedPng(imageBytes).catch(() => null);
                         } else {
                             image = await newPdfDoc.embedJpg(imageBytes).catch(() => newPdfDoc.embedPng(imageBytes).catch(() => null));
                         }

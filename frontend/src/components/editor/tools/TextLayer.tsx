@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
-import { addAnnotation, updateAnnotation, setSelectedAnnotationId, deleteAnnotation, updateAnnotationProperties } from '../../../store/slices/canvasSlice';
+import { addAnnotation, updateAnnotation, setSelectedAnnotationId, deleteAnnotation, updateAnnotationProperties, updateAnnotationLive, commitHistory } from '../../../store/slices/canvasSlice';
 import { nanoid } from '@reduxjs/toolkit';
 
 interface TextLayerProps {
@@ -37,6 +37,7 @@ export const TextLayer: React.FC<TextLayerProps> = ({ pageNumber, scale }) => {
         e.stopPropagation();
         e.preventDefault();
         dispatch(setSelectedAnnotationId(ann.id));
+        dispatch(commitHistory());
 
         const startX = e.clientX;
         const startY = e.clientY;
@@ -46,7 +47,7 @@ export const TextLayer: React.FC<TextLayerProps> = ({ pageNumber, scale }) => {
         const handleMouseMove = (moveEvent: MouseEvent) => {
             const dx = (moveEvent.clientX - startX) / scale;
             const dy = (moveEvent.clientY - startY) / scale;
-            dispatch(updateAnnotationProperties({
+            dispatch(updateAnnotationLive({
                 id: ann.id,
                 updates: {
                     x: initialX + dx,

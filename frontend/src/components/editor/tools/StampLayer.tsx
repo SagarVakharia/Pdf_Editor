@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../store/store';
-import { setSelectedAnnotationId, deleteAnnotation, updateAnnotationProperties } from '../../../store/slices/canvasSlice';
+import { setSelectedAnnotationId, deleteAnnotation, updateAnnotationProperties, updateAnnotationLive, commitHistory } from '../../../store/slices/canvasSlice';
 
 interface StampLayerProps {
     pageNumber: number;
@@ -25,7 +25,20 @@ const HANDLE_POSITIONS: Record<ResizeHandle, { top: string; left: string; cursor
     w:  { top: '50%', left: '0',   cursor: 'w-resize'  },
 };
 
-const MIN_SIZE = 40; // minimum stamp dimension in PDF-space units
+const MIN_SIZE = 40;
+const parseHexToRgba = (hex: string | undefined, defaultHex = '#22c55e', alpha = 0.08): string => {
+    let clean = (hex || defaultHex).trim();
+    if (!clean.startsWith('#')) clean = defaultHex;
+    if (clean.length === 4) {
+        clean = '#' + clean[1] + clean[1] + clean[2] + clean[2] + clean[3] + clean[3];
+    }
+    if (clean.length !== 7) clean = defaultHex;
+    const r = parseInt(clean.slice(1, 3), 16) || 0;
+    const g = parseInt(clean.slice(3, 5), 16) || 0;
+    const b = parseInt(clean.slice(5, 7), 16) || 0;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+ // minimum stamp dimension in PDF-space units
 
 export const StampLayer: React.FC<StampLayerProps> = ({ pageNumber, scale }) => {
     const dispatch = useDispatch();
@@ -45,6 +58,7 @@ export const StampLayer: React.FC<StampLayerProps> = ({ pageNumber, scale }) => 
         e.stopPropagation();
         e.preventDefault();
         dispatch(setSelectedAnnotationId(ann.id));
+        dispatch(commitHistory());
 
         const startX = e.clientX;
         const startY = e.clientY;
@@ -52,7 +66,7 @@ export const StampLayer: React.FC<StampLayerProps> = ({ pageNumber, scale }) => 
         const initY = ann.y;
 
         const onMove = (me: MouseEvent) => {
-            dispatch(updateAnnotationProperties({
+            dispatch(updateAnnotationLive({
                 id: ann.id,
                 updates: {
                     x: initX + (me.clientX - startX) / scale,
@@ -77,6 +91,7 @@ export const StampLayer: React.FC<StampLayerProps> = ({ pageNumber, scale }) => 
         e.stopPropagation();
         e.preventDefault();
         dispatch(setSelectedAnnotationId(ann.id));
+        dispatch(commitHistory());
 
         const startX = e.clientX;
         const startY = e.clientY;
@@ -117,7 +132,7 @@ export const StampLayer: React.FC<StampLayerProps> = ({ pageNumber, scale }) => 
                 newH = Math.max(MIN_SIZE, initH + dy);
             }
 
-            dispatch(updateAnnotationProperties({
+            dispatch(updateAnnotationLive({
                 id: ann.id,
                 updates: { x: newX, y: newY, minWidth: newW, minHeight: newH }
             }));
@@ -137,11 +152,8 @@ export const StampLayer: React.FC<StampLayerProps> = ({ pageNumber, scale }) => 
                 const w = (ann.minWidth  ?? (ann.size ?? 120)) * scale;
                 const h = (ann.minHeight ?? Math.max(36, (ann.size ?? 120) * 0.45)) * scale;
 
-                const borderHex = ann.color || '#e2e8f0';
-                const bgR = parseInt(borderHex.slice(1, 3), 16);
-                const bgG = parseInt(borderHex.slice(3, 5), 16);
-                const bgB = parseInt(borderHex.slice(5, 7), 16);
-                const rgbaBg = `rgba(${bgR}, ${bgG}, ${bgB}, 0.08)`;
+                const borderHex = ann.color || '#22c55e';
+                const rgbaBg = parseHexToRgba(borderHex);
 
                 const isSelected = selectedAnnotationId === ann.id;
                 const isHovered  = hoveredId === ann.id;
